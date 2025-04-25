@@ -8,7 +8,6 @@
         :root { --primary: #2c3e50; --secondary: #3498db; }
         body { font-family: '微软雅黑'; background: #f5f6fa; }
         .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
         .file-upload { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .grade-section { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -19,7 +18,7 @@
         .add-btn { background: #27ae60; color: white; }
         .exchange-panel { background: #fff; padding: 20px; margin-top: 20px; border-radius: 8px; }
 
-        /* 新增折叠样式 */
+        /* 折叠样式 */
         .collapsible {
             cursor: pointer;
             padding: 10px;
@@ -81,82 +80,134 @@
 // Cloudflare配置
 const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
 
-// 数据初始化
+// 数据存储
 let students = [];
 let prizes = [];
 let collapseStates = {};
 
-// 数据加载
+// 初始化加载
+// 前端数据加载逻辑
 async function loadData() {
     try {
-        const response = await fetch(CLOUDFLARE_API_URL);
-        const data = await response.json();
-        students = data.students || [];
-        prizes = data.prizes || [];
+        // 并行获取所有必要数据
+        const [classListRes, prizesRes] = await Promise.all([
+            fetch(`${CLOUDFLARE_API_URL}/classes`),
+            fetch(`${CLOUDFLARE_API_URL}/prizes`)
+        ])
+        
+        const classList = await classListRes.json()
+        const prizes = await prizesRes.json()
+        
+        // 获取所有班级数据
+        const classDataRequests = classList.map(className => 
+            fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}`)
+        )
+        const classResponses = await Promise.all(classDataRequests)
+        
+        // 合并数据
+        let students = []
+        let collapseStates = {}
+        
+        for (const res of classResponses) {
+            const data = await res.json()
+            students = students.concat(data.students)
+            collapseStates = { ...collapseStates, ...data.collapseState }
+        }
+        
+        // 更新前端状态
+        this.students = students
+        this.prizes = prizes
+        this.collapseStates = collapseStates
+        
     } catch (e) {
-        console.error('云端加载失败，使用本地数据:', e);
-        students = JSON.parse(localStorage.getItem('students')) || [];
-        prizes = JSON.parse(localStorage.getItem('prizes')) || [];
+        console.error('加载失败:', e)
+        // 本地回退逻辑...
     }
-    
-    // 加载折叠状态
-    const savedStates = localStorage.getItem('collapseStates');
-    if(savedStates) collapseStates = JSON.parse(savedStates);
-    
-    renderAll();
-    renderPrizes();
+    renderAll()
 }
 
-// 数据保存
+// 保存数据逻辑
 async function saveData() {
-    // 本地存储
-    localStorage.setItem('students', JSON.stringify(students));
-    localStorage.setItem('prizes', JSON.stringify(prizes));
-    localStorage.setItem('collapseStates', JSON.stringify(collapseStates));
-
-    // 云端存储
     try {
-        await fetch(CLOUDFLARE_API_URL, {
+        // 保存奖品数据
+        await fetch(`${CLOUDFLARE_API_URL}/prizes`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ students, prizes })
-        });
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(this.prizes)
+        })
+        
+        // 按班级保存数据
+        const classes = [...new Set(this.students.map(s => s.className))]
+        const saveRequests = classes.map(className => {
+            const classStudents = this.students.filter(s => s.className === className)
+            const classCollapse = Object.keys(this.collapseStates)
+                .filter(key => key.startsWith(className))
+                .reduce((obj, key) => {
+                    obj[key] = this.collapseStates[key]
+                    return obj
+                }, {})
+            
+            return fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    students: classStudents,
+                    collapseState: classCollapse
+                })
+            })
+        })
+        
+        await Promise.all(saveRequests)
+        
     } catch (e) {
-        console.error('云端保存失败:', e);
-        alert('云端保存失败，数据已暂存本地！');
+        console.error('保存失败:', e)
+        alert('部分数据保存失败！')
     }
 }
 
-// 渲染主界面（含折叠功能）
+// 添加新班级
+async function addNewClass(className) {
+    try {
+        await fetch(`${CLOUDFLARE_API_URL}/classes`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ className })
+        })
+        // 更新本地班级列表
+        await loadData()
+    } catch (e) {
+        console.error('添加班级失败:', e)
+    }
+}
+
+
+// 渲染界面
 function renderAll() {
     let html = '';
     const grades = [...new Set(students.map(s => s.grade))];
     
     grades.forEach(grade => {
-        html += `<div class="grade-section">
-            <h3>${grade}</h3>`;
-            
+        html += `<div class="grade-section"><h3>${grade}</h3>`;
+        
         const classes = [...new Set(students
             .filter(s => s.grade === grade)
             .map(s => s.className))];
             
         classes.forEach(cls => {
-            const studentCount = students.filter(s => s.className === cls).length;
+            const studentList = students.filter(s => s.className === cls);
             const isCollapsed = collapseStates[cls] ?? false;
             
             html += `
             <div class="class-container">
                 <div class="collapsible ${isCollapsed ? '' : 'active'}" 
-                     onclick="toggleCollapse('${cls}')">
+                     onclick="toggleCollapse('${cls.replace(/'/g, "\\'")}')">
                     ${cls}
-                    <span class="student-count">(${studentCount}人)</span>
+                    <span class="student-count">(${studentList.length}人)</span>
                 </div>
-                <div class="class-content" 
-                     id="${cls}-content" 
-                     style="max-height: ${isCollapsed ? '0' : '500px'}">
+                <div class="class-content" id="${cls}-content" 
+                     style="max-height: ${isCollapsed ? '0' : '1000px'}">
                     <table>
-                        <tr><th colspan="4">${cls}</th></tr>
-                        ${students.filter(s => s.className === cls).map((s, i) => `
+                        ${studentList.map((s, i) => `
                         <tr>
                             <td>${s.name}</td>
                             <td>${s.score}分</td>
@@ -177,7 +228,7 @@ function renderAll() {
     document.getElementById('gradeContainer').innerHTML = html;
 }
 
-// 折叠功能控制
+// 折叠功能
 function toggleCollapse(classId) {
     const content = document.getElementById(`${classId}-content`);
     const header = content.previousElementSibling;
@@ -192,20 +243,80 @@ function toggleCollapse(classId) {
     saveData();
 }
 
-// 积分调整（支持负数）
+// 核心功能
 function adjustScore(index, delta) {
     students[index].score += delta;
     saveData();
     renderAll();
 }
 
-// 原有功能保持不变
+function addStudent() {
+    const className = document.getElementById('newClass').value;
+    const name = document.getElementById('newName').value;
+    if (className && name) {
+        students.push({
+            grade: className.replace(/\d/g, ''),
+            className,
+            name,
+            score: 0
+        });
+        saveData();
+        renderAll();
+    }
+}
+
+function deleteStudent(index) {
+    students.splice(index, 1);
+    saveData();
+    renderAll();
+}
+
+// 奖品管理
+function addPrize() {
+    prizes.push({
+        name: document.getElementById('prizeName').value,
+        points: parseInt(document.getElementById('prizePoints').value),
+        stock: parseInt(document.getElementById('prizeStock').value)
+    });
+    saveData();
+    renderPrizes();
+}
+
+function renderPrizes() {
+    document.getElementById('prizeList').innerHTML = prizes.map((p, i) => `
+        <div style="margin:10px; padding:10px; border:1px solid #ddd">
+            ${p.name} (需${p.points}分) 剩余：${p.stock}件
+            <button onclick="exchangePrize(${i})">兑换</button>
+        </div>
+    `).join('');
+}
+
+function exchangePrize(index) {
+    if (prizes[index].stock > 0) {
+        const studentName = prompt("请输入兑换学生姓名：");
+        const student = students.find(s => s.name === studentName);
+        
+        if (student && confirm(`确认扣除${prizes[index].points}积分兑换${prizes[index].name}？`)) {
+            if (student.score >= prizes[index].points) {
+                student.score -= prizes[index].points;
+                prizes[index].stock--;
+                saveData();
+                renderAll();
+                renderPrizes();
+            } else {
+                alert('积分不足！');
+            }
+        }
+    }
+}
+
+// 文件处理
 function importData() {
     const file = document.getElementById('fileInput').files[0];
     const reader = new FileReader();
     
     reader.onload = function(e) {
-        if(file.name.endsWith('.txt')) {
+        if (file.name.endsWith('.txt')) {
             processTXT(e.target.result);
         } else {
             processExcel(e.target.result);
@@ -214,17 +325,15 @@ function importData() {
         renderAll();
     }
     
-    if(file.name.endsWith('.txt')) {
-        reader.readAsText(file);
-    } else {
-        reader.readAsArrayBuffer(file);
-    }
+    file.name.endsWith('.txt') 
+        ? reader.readAsText(file) 
+        : reader.readAsArrayBuffer(file);
 }
 
 function processTXT(data) {
     data.split('\n').forEach(line => {
         const [className, name] = line.split('@');
-        if(className && name) {
+        if (className && name) {
             students.push({ 
                 grade: className.match(/(.*?)\d/)[1],
                 className: className.trim(),
@@ -248,70 +357,8 @@ function processExcel(data) {
     });
 }
 
-function addStudent() {
-    const className = document.getElementById('newClass').value;
-    const name = document.getElementById('newName').value;
-    if(className && name) {
-        students.push({
-            grade: className.replace(/\d/g, ''),
-            className,
-            name,
-            score: 0
-        });
-        saveData();
-        renderAll();
-    }
-}
-
-function deleteStudent(index) {
-    students.splice(index, 1);
-    saveData();
-    renderAll();
-}
-
-function adjustScore(index, delta) {
-    students[index].score += delta;
-    saveData();
-    renderAll();
-}
-
-function addPrize() {
-    prizes.push({
-        name: document.getElementById('prizeName').value,
-        points: parseInt(document.getElementById('prizePoints').value),
-        stock: parseInt(document.getElementById('prizeStock').value)
-    });
-    renderPrizes();
-    saveData();
-}
-
-function renderPrizes() {
-    document.getElementById('prizeList').innerHTML = prizes.map((p, i) => `
-        <div style="margin:10px; padding:10px; border:1px solid #ddd">
-            ${p.name} (需${p.points}分) 剩余：${p.stock}件
-            <button onclick="exchangePrize(${i})">兑换</button>
-        </div>
-    `).join('');
-}
-
-function exchangePrize(index) {
-    if(prizes[index].stock > 0) {
-        const student = prompt("请输入兑换学生姓名：");
-        if(student && confirm(`确认扣除${prizes[index].points}积分兑换${prizes[index].name}？`)) {
-            const sIndex = students.findIndex(s => s.name === student);
-            if(sIndex !== -1 && students[sIndex].score >= prizes[index].points) {
-                students[sIndex].score -= prizes[index].points;
-                prizes[index].stock--;
-                saveData();
-                renderAll();
-                renderPrizes();
-            }
-        }
-    }
-}
-
 // 初始化
-loadData();
+document.addEventListener('DOMContentLoaded', loadData);
 </script>
 </body>
 </html>
