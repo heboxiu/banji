@@ -8,7 +8,6 @@
         :root { --primary: #2c3e50; --secondary: #3498db; }
         body { font-family: '微软雅黑'; background: #f5f6fa; }
         .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
         .file-upload { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .grade-section { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -18,6 +17,31 @@
         .score-btn { padding: 5px 10px; margin: 0 3px; border: none; border-radius: 4px; cursor: pointer; }
         .add-btn { background: #27ae60; color: white; }
         .exchange-panel { background: #fff; padding: 20px; margin-top: 20px; border-radius: 8px; }
+        
+        /* 新增折叠样式 */
+        .class-header {
+            cursor: pointer;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+        }
+        .toggle-icon {
+            margin-right: 10px;
+            transition: transform 0.3s;
+        }
+        .collapsed .toggle-icon {
+            transform: rotate(90deg);
+        }
+        .student-table {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .collapsed + .student-table {
+            max-height: 0 !important;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
@@ -49,32 +73,35 @@
     </div>
 
 <script>
-// Cloudflare Worker配置（需替换为实际地址）
+// Cloudflare配置
 const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
-
 let students = [];
 let prizes = [];
+let collapseState = {}; // 折叠状态存储
 
-// 初始化加载数据
+// 数据初始化
 async function loadData() {
     try {
         const response = await fetch(CLOUDFLARE_API_URL);
         const data = await response.json();
         students = data.students || [];
         prizes = data.prizes || [];
+        collapseState = JSON.parse(localStorage.getItem('collapseState')) || {};
     } catch (e) {
         console.error('云端加载失败，使用本地数据:', e);
         students = JSON.parse(localStorage.getItem('students')) || [];
         prizes = JSON.parse(localStorage.getItem('prizes')) || [];
+        collapseState = JSON.parse(localStorage.getItem('collapseState')) || {};
     }
     renderAll();
     renderPrizes();
 }
 
-// 保存数据（云端+本地）
+// 数据保存
 async function saveData() {
     localStorage.setItem('students', JSON.stringify(students));
     localStorage.setItem('prizes', JSON.stringify(prizes));
+    localStorage.setItem('collapseState', JSON.stringify(collapseState));
     
     try {
         await fetch(CLOUDFLARE_API_URL, {
@@ -84,17 +111,68 @@ async function saveData() {
         });
     } catch (e) {
         console.error('云端保存失败:', e);
+        alert('云端保存失败，数据已暂存本地！');
     }
 }
 
-// 允许负分调整
-function adjustScore(index, delta) {
-    students[index].score += delta;
+// 折叠功能
+function toggleCollapse(classId) {
+    const container = document.getElementById(classId);
+    const header = container.previousElementSibling;
+    collapseState[classId] = !collapseState[classId];
+    
+    if (collapseState[classId]) {
+        container.style.maxHeight = '0';
+        header.classList.add('collapsed');
+    } else {
+        container.style.maxHeight = '500px';
+        header.classList.remove('collapsed');
+    }
     saveData();
-    renderAll();
 }
 
-// 文件处理函数
+// 界面渲染
+function renderAll() {
+    let html = '';
+    const grades = [...new Set(students.map(s => s.grade))];
+    
+    grades.forEach(grade => {
+        html += `<div class="grade-section"><h3>${grade}</h3>`;
+        const classes = [...new Set(students
+            .filter(s => s.grade === grade)
+            .map(s => s.className))];
+            
+        classes.forEach(cls => {
+            const classId = `${grade}-${cls}`.replace(/\s+/g, '-');
+            html += `
+                <div class="class-header" onclick="toggleCollapse('${classId}')">
+                    <span class="toggle-icon">▶</span>
+                    ${cls}
+                </div>
+                <div class="student-table" id="${classId}" 
+                    style="max-height: ${collapseState[classId] ? '0' : '500px'}">
+                    <table>
+                        ${students.filter(s => s.className === cls).map((s, i) => `
+                        <tr>
+                            <td>${s.name}</td>
+                            <td>${s.score}分</td>
+                            <td>
+                                <button class="score-btn" style="background:#27ae60" 
+                                    onclick="adjustScore(${i}, 1)">+1</button>
+                                <button class="score-btn" style="background:#e74c3c" 
+                                    onclick="adjustScore(${i}, -1)">-1</button>
+                                <button class="score-btn" onclick="deleteStudent(${i})">删除</button>
+                            </td>
+                        </tr>`).join('')}
+                    </table>
+                </div>`;
+        });
+        html += '</div>';
+    });
+    document.getElementById('gradeContainer').innerHTML = html;
+}
+
+// 原有功能保持不变
 function importData() {
     const file = document.getElementById('fileInput').files[0];
     const reader = new FileReader();
@@ -143,38 +221,6 @@ function processExcel(data) {
     });
 }
 
-// 界面渲染函数
-function renderAll() {
-    let html = '';
-    const grades = [...new Set(students.map(s => s.grade))];
-    
-    grades.forEach(grade => {
-        html += `<div class="grade-section"><h3>${grade}</h3>`;
-        const classes = [...new Set(students.filter(s => s.grade === grade).map(s => s.className))];
-            
-        classes.forEach(cls => {
-            html += `<table>
-                <tr><th colspan="4">${cls}</th></tr>
-                ${students.filter(s => s.className === cls).map((s, i) => `
-                <tr>
-                    <td>${s.name}</td>
-                    <td>${s.score}分</td>
-                    <td>
-                        <button class="score-btn" style="background:#27ae60" 
-                            onclick="adjustScore(${i}, 1)">+1</button>
-                        <button class="score-btn" style="background:#e74c3c" 
-                            onclick="adjustScore(${i}, -1)">-1</button>
-                        <button class="score-btn" onclick="deleteStudent(${i})">删除</button>
-                    </td>
-                </tr>`).join('')}
-            </table>`;
-        });
-        html += '</div>';
-    });
-    document.getElementById('gradeContainer').innerHTML = html;
-}
-
-// 其他功能函数
 function addStudent() {
     const className = document.getElementById('newClass').value;
     const name = document.getElementById('newName').value;
@@ -192,6 +238,12 @@ function addStudent() {
 
 function deleteStudent(index) {
     students.splice(index, 1);
+    saveData();
+    renderAll();
+}
+
+function adjustScore(index, delta) {
+    students[index].score += delta;
     saveData();
     renderAll();
 }
