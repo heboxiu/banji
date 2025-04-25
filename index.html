@@ -8,6 +8,7 @@
         :root { --primary: #2c3e50; --secondary: #3498db; }
         body { font-family: '微软雅黑'; background: #f5f6fa; }
         .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
         .file-upload { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .grade-section { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -17,30 +18,34 @@
         .score-btn { padding: 5px 10px; margin: 0 3px; border: none; border-radius: 4px; cursor: pointer; }
         .add-btn { background: #27ae60; color: white; }
         .exchange-panel { background: #fff; padding: 20px; margin-top: 20px; border-radius: 8px; }
-        
+
         /* 新增折叠样式 */
-        .class-header {
+        .collapsible {
             cursor: pointer;
             padding: 10px;
-            background: #f0f0f0;
+            background: var(--primary);
+            color: white;
             border-radius: 4px;
             margin: 5px 0;
             display: flex;
+            justify-content: space-between;
             align-items: center;
         }
-        .toggle-icon {
-            margin-right: 10px;
+        .collapsible::after {
+            content: "▼";
             transition: transform 0.3s;
         }
-        .collapsed .toggle-icon {
-            transform: rotate(90deg);
+        .collapsible.active::after {
+            transform: rotate(180deg);
         }
-        .student-table {
+        .class-content {
+            max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease-out;
+            transition: max-height 0.2s ease-out;
         }
-        .collapsed + .student-table {
-            max-height: 0 !important;
+        .student-count {
+            font-size: 0.9em;
+            opacity: 0.8;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
@@ -74,35 +79,42 @@
 
 <script>
 // Cloudflare配置
-const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
-let students = [];
-let prizes = [];
-let collapseState = {}; // 折叠状态存储
+const CLOUDFLARE_API_URL = 'https://your-worker.your-subdomain.workers.dev';
 
 // 数据初始化
+let students = [];
+let prizes = [];
+let collapseStates = {};
+
+// 数据加载
 async function loadData() {
     try {
         const response = await fetch(CLOUDFLARE_API_URL);
         const data = await response.json();
         students = data.students || [];
         prizes = data.prizes || [];
-        collapseState = JSON.parse(localStorage.getItem('collapseState')) || {};
     } catch (e) {
         console.error('云端加载失败，使用本地数据:', e);
         students = JSON.parse(localStorage.getItem('students')) || [];
         prizes = JSON.parse(localStorage.getItem('prizes')) || [];
-        collapseState = JSON.parse(localStorage.getItem('collapseState')) || {};
     }
+    
+    // 加载折叠状态
+    const savedStates = localStorage.getItem('collapseStates');
+    if(savedStates) collapseStates = JSON.parse(savedStates);
+    
     renderAll();
     renderPrizes();
 }
 
 // 数据保存
 async function saveData() {
+    // 本地存储
     localStorage.setItem('students', JSON.stringify(students));
     localStorage.setItem('prizes', JSON.stringify(prizes));
-    localStorage.setItem('collapseState', JSON.stringify(collapseState));
-    
+    localStorage.setItem('collapseStates', JSON.stringify(collapseStates));
+
+    // 云端存储
     try {
         await fetch(CLOUDFLARE_API_URL, {
             method: 'POST',
@@ -115,43 +127,35 @@ async function saveData() {
     }
 }
 
-// 折叠功能
-function toggleCollapse(classId) {
-    const container = document.getElementById(classId);
-    const header = container.previousElementSibling;
-    collapseState[classId] = !collapseState[classId];
-    
-    if (collapseState[classId]) {
-        container.style.maxHeight = '0';
-        header.classList.add('collapsed');
-    } else {
-        container.style.maxHeight = '500px';
-        header.classList.remove('collapsed');
-    }
-    saveData();
-}
-
-// 界面渲染
+// 渲染主界面（含折叠功能）
 function renderAll() {
     let html = '';
     const grades = [...new Set(students.map(s => s.grade))];
     
     grades.forEach(grade => {
-        html += `<div class="grade-section"><h3>${grade}</h3>`;
+        html += `<div class="grade-section">
+            <h3>${grade}</h3>`;
+            
         const classes = [...new Set(students
             .filter(s => s.grade === grade)
             .map(s => s.className))];
             
         classes.forEach(cls => {
-            const classId = `${grade}-${cls}`.replace(/\s+/g, '-');
+            const studentCount = students.filter(s => s.className === cls).length;
+            const isCollapsed = collapseStates[cls] ?? false;
+            
             html += `
-                <div class="class-header" onclick="toggleCollapse('${classId}')">
-                    <span class="toggle-icon">▶</span>
+            <div class="class-container">
+                <div class="collapsible ${isCollapsed ? '' : 'active'}" 
+                     onclick="toggleCollapse('${cls}')">
                     ${cls}
+                    <span class="student-count">(${studentCount}人)</span>
                 </div>
-                <div class="student-table" id="${classId}" 
-                    style="max-height: ${collapseState[classId] ? '0' : '500px'}">
+                <div class="class-content" 
+                     id="${cls}-content" 
+                     style="max-height: ${isCollapsed ? '0' : '500px'}">
                     <table>
+                        <tr><th colspan="4">${cls}</th></tr>
                         ${students.filter(s => s.className === cls).map((s, i) => `
                         <tr>
                             <td>${s.name}</td>
@@ -165,11 +169,34 @@ function renderAll() {
                             </td>
                         </tr>`).join('')}
                     </table>
-                </div>`;
+                </div>
+            </div>`;
         });
         html += '</div>';
     });
     document.getElementById('gradeContainer').innerHTML = html;
+}
+
+// 折叠功能控制
+function toggleCollapse(classId) {
+    const content = document.getElementById(`${classId}-content`);
+    const header = content.previousElementSibling;
+    
+    collapseStates[classId] = !collapseStates[classId];
+    header.classList.toggle('active');
+    
+    content.style.maxHeight = collapseStates[classId] 
+        ? '0' 
+        : `${content.scrollHeight}px`;
+    
+    saveData();
+}
+
+// 积分调整（支持负数）
+function adjustScore(index, delta) {
+    students[index].score += delta;
+    saveData();
+    renderAll();
 }
 
 // 原有功能保持不变
