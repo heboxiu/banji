@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中小学积分管理系统</title>
+    <style>
+        :root { --primary: #2c3e50; --secondary: #3498db; }
+        body { font-family: '微软雅黑'; background: #f5f6fa; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .file-upload { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .grade-section { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: var(--primary); color: white; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        .score-btn { padding: 5px 10px; margin: 0 3px; border: none; border-radius: 4px; cursor: pointer; }
+        .add-btn { background: #27ae60; color: white; }
+        .exchange-panel { background: #fff; padding: 20px; margin-top: 20px; border-radius: 8px; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="file-upload">
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.txt">
+            <button onclick="importData()">导入名单</button>
+        </div>
+
+        <div class="file-upload">
+            <input type="text" id="newClass" placeholder="年级班级（如：一年级1班）">
+            <input type="text" id="newName" placeholder="学生姓名">
+            <button class="add-btn" onclick="addStudent()">添加学生</button>
+        </div>
+
+        <div id="gradeContainer"></div>
+
+        <div class="exchange-panel">
+            <h3>奖品设置</h3>
+            <div>
+                <input type="text" id="prizeName" placeholder="奖品名称">
+                <input type="number" id="prizePoints" placeholder="所需积分">
+                <input type="number" id="prizeStock" placeholder="库存数量">
+                <button class="add-btn" onclick="addPrize()">添加奖品</button>
+            </div>
+            <div id="prizeList"></div>
+        </div>
+    </div>
+
+<script>
+// Cloudflare Worker配置（需替换为实际地址）
+const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
+
+let students = [];
+let prizes = [];
+
+// 初始化加载数据
+async function loadData() {
+    try {
+        const response = await fetch(CLOUDFLARE_API_URL);
+        const data = await response.json();
+        students = data.students || [];
+        prizes = data.prizes || [];
+    } catch (e) {
+        console.error('云端加载失败，使用本地数据:', e);
+        students = JSON.parse(localStorage.getItem('students')) || [];
+        prizes = JSON.parse(localStorage.getItem('prizes')) || [];
+    }
+    renderAll();
+    renderPrizes();
+}
+
+// 保存数据（云端+本地）
+async function saveData() {
+    localStorage.setItem('students', JSON.stringify(students));
+    localStorage.setItem('prizes', JSON.stringify(prizes));
+    
+    try {
+        await fetch(CLOUDFLARE_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ students, prizes })
+        });
+    } catch (e) {
+        console.error('云端保存失败:', e);
+    }
+}
+
+// 允许负分调整
+function adjustScore(index, delta) {
+    students[index].score += delta;
+    saveData();
+    renderAll();
+}
+
+// 文件处理函数
+function importData() {
+    const file = document.getElementById('fileInput').files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        if(file.name.endsWith('.txt')) {
+            processTXT(e.target.result);
+        } else {
+            processExcel(e.target.result);
+        }
+        saveData();
+        renderAll();
+    }
+    
+    if(file.name.endsWith('.txt')) {
+        reader.readAsText(file);
+    } else {
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+function processTXT(data) {
+    data.split('\n').forEach(line => {
+        const [className, name] = line.split('@');
+        if(className && name) {
+            students.push({ 
+                grade: className.match(/(.*?)\d/)[1],
+                className: className.trim(),
+                name: name.trim(),
+                score: 0 
+            });
+        }
+    });
+}
+
+function processExcel(data) {
+    const workbook = XLSX.read(data, {type: 'array'});
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    XLSX.utils.sheet_to_json(sheet).forEach(row => {
+        students.push({
+            grade: row.班级.split(/\d/)[0],
+            className: row.班级,
+            name: row.姓名,
+            score: 0
+        });
+    });
+}
+
+// 界面渲染函数
+function renderAll() {
+    let html = '';
+    const grades = [...new Set(students.map(s => s.grade))];
+    
+    grades.forEach(grade => {
+        html += `<div class="grade-section"><h3>${grade}</h3>`;
+        const classes = [...new Set(students.filter(s => s.grade === grade).map(s => s.className))];
+            
+        classes.forEach(cls => {
+            html += `<table>
+                <tr><th colspan="4">${cls}</th></tr>
+                ${students.filter(s => s.className === cls).map((s, i) => `
+                <tr>
+                    <td>${s.name}</td>
+                    <td>${s.score}分</td>
+                    <td>
+                        <button class="score-btn" style="background:#27ae60" 
+                            onclick="adjustScore(${i}, 1)">+1</button>
+                        <button class="score-btn" style="background:#e74c3c" 
+                            onclick="adjustScore(${i}, -1)">-1</button>
+                        <button class="score-btn" onclick="deleteStudent(${i})">删除</button>
+                    </td>
+                </tr>`).join('')}
+            </table>`;
+        });
+        html += '</div>';
+    });
+    document.getElementById('gradeContainer').innerHTML = html;
+}
+
+// 其他功能函数
+function addStudent() {
+    const className = document.getElementById('newClass').value;
+    const name = document.getElementById('newName').value;
+    if(className && name) {
+        students.push({
+            grade: className.replace(/\d/g, ''),
+            className,
+            name,
+            score: 0
+        });
+        saveData();
+        renderAll();
+    }
+}
+
+function deleteStudent(index) {
+    students.splice(index, 1);
+    saveData();
+    renderAll();
+}
+
+function addPrize() {
+    prizes.push({
+        name: document.getElementById('prizeName').value,
+        points: parseInt(document.getElementById('prizePoints').value),
+        stock: parseInt(document.getElementById('prizeStock').value)
+    });
+    renderPrizes();
+    saveData();
+}
+
+function renderPrizes() {
+    document.getElementById('prizeList').innerHTML = prizes.map((p, i) => `
+        <div style="margin:10px; padding:10px; border:1px solid #ddd">
+            ${p.name} (需${p.points}分) 剩余：${p.stock}件
+            <button onclick="exchangePrize(${i})">兑换</button>
+        </div>
+    `).join('');
+}
+
+function exchangePrize(index) {
+    if(prizes[index].stock > 0) {
+        const student = prompt("请输入兑换学生姓名：");
+        if(student && confirm(`确认扣除${prizes[index].points}积分兑换${prizes[index].name}？`)) {
+            const sIndex = students.findIndex(s => s.name === student);
+            if(sIndex !== -1 && students[sIndex].score >= prizes[index].points) {
+                students[sIndex].score -= prizes[index].points;
+                prizes[index].stock--;
+                saveData();
+                renderAll();
+                renderPrizes();
+            }
+        }
+    }
+}
+
+// 初始化
+loadData();
+</script>
+</body>
+</html>
