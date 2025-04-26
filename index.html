@@ -1,35 +1,75 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <!-- 未修改的meta标签和标题 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>中小学积分管理系统</title>
-
-    <!-- 原有样式 + 新增折叠样式 -->
+    <title>智能积分管理系统</title>
     <style>
-        /* 未修改的原始样式 */
-        :root { --primary: #2c3e50; --secondary: #3498db; }
-        body { font-family: '微软雅黑'; background: #f5f6fa; }
-        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
-        .file-upload { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .grade-section { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background: var(--primary); color: white; }
-        tr:nth-child(even) { background: #f8f9fa; }
-        .score-btn { padding: 5px 10px; margin: 0 3px; border: none; border-radius: 4px; cursor: pointer; }
-        .add-btn { background: #27ae60; color: white; }
-        .exchange-panel { background: #fff; padding: 20px; margin-top: 20px; border-radius: 8px; }
-
-        /* 新增的折叠样式 */
-        .collapsible {
-            cursor: pointer;
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --danger: #e74c3c;
+        }
+        body {
+            font-family: '微软雅黑', sans-serif;
+            background: #f5f6fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        .file-upload {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        input[type="text"], 
+        input[type="number"] {
+            flex: 1;
             padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
             background: var(--primary);
             color: white;
-            border-radius: 4px;
-            margin: 5px 0;
+        }
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .collapsible {
+            background: var(--primary);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -44,152 +84,211 @@
         .class-content {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.2s ease-out;
+            transition: max-height 0.3s ease-out;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: var(--primary);
+            color: white;
+        }
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        .score-display {
+            min-width: 80px;
+            font-weight: bold;
+            color: var(--primary);
         }
     </style>
-    <!-- 未修改的XLSX库引用 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
 <body>
-    <!-- 未修改的HTML结构 -->
     <div class="container">
+        <!-- 数据管理区域 -->
         <div class="file-upload">
-            <input type="file" id="fileInput" accept=".xlsx,.xls,.txt">
-            <button onclick="importData()">导入名单</button>
+            <div class="input-group">
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.txt">
+                <button class="btn-primary" onclick="importData()">导入名单</button>
+            </div>
+            <div class="input-group">
+                <input type="text" id="newClass" placeholder="输入班级（如：一年级1班）">
+                <input type="text" id="newName" placeholder="学生姓名">
+                <button class="btn-success" onclick="addStudent()">添加学生</button>
+            </div>
         </div>
 
-        <div class="file-upload">
-            <input type="text" id="newClass" placeholder="年级班级（如：一年级1班）">
-            <input type="text" id="newName" placeholder="学生姓名">
-            <button class="add-btn" onclick="addStudent()">添加学生</button>
-        </div>
-
+        <!-- 积分显示区域 -->
         <div id="gradeContainer"></div>
 
-        <div class="exchange-panel">
-            <h3>奖品设置</h3>
-            <div>
+        <!-- 奖品管理区域 -->
+        <div class="file-upload">
+            <h3>奖品管理</h3>
+            <div class="input-group">
                 <input type="text" id="prizeName" placeholder="奖品名称">
                 <input type="number" id="prizePoints" placeholder="所需积分">
                 <input type="number" id="prizeStock" placeholder="库存数量">
-                <button class="add-btn" onclick="addPrize()">添加奖品</button>
+                <button class="btn-success" onclick="addPrize()">添加奖品</button>
             </div>
             <div id="prizeList"></div>
         </div>
     </div>
 
 <script>
-// 未修改的Cloudflare配置（需替换实际地址）
-const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
+// 配置项
+const CLOUDFLARE_API = {
+    BASE_URL: 'https://banji.446617.workers.dev/',
+    ENDPOINTS: {
+        CLASS: '/class',
+        PRIZES: '/prizes'
+    }
+};
 
-// 原有数据结构 + 新增折叠状态
-let students = [];
-let prizes = [];
-let collapseStates = {};
+// 数据状态
+let state = {
+    students: [],
+    prizes: [],
+    collapseStates: JSON.parse(localStorage.getItem('collapseStates')) || {}
+};
 
-// 修改后的初始化加载函数
-async function loadData() {
+// 初始化
+(async () => {
     try {
-        const response = await fetch(CLOUDFLARE_API_URL);
-        const data = await response.json();
-        students = data.students || [];
-        prizes = data.prizes || [];
+        const [studentsRes, prizesRes] = await Promise.all([
+            fetch(`${CLOUDFLARE_API.BASE_URL}${CLOUDFLARE_API.ENDPOINTS.CLASS}`),
+            fetch(`${CLOUDFLARE_API.BASE_URL}${CLOUDFLARE_API.ENDPOINTS.PRIZES}`)
+        ]);
+        
+        const classData = await studentsRes.json();
+        state.students = Object.values(classData).flat();
+        state.prizes = await prizesRes.json();
     } catch (e) {
         console.error('云端加载失败，使用本地数据:', e);
-        students = JSON.parse(localStorage.getItem('students')) || [];
-        prizes = JSON.parse(localStorage.getItem('prizes')) || [];
+        state.students = JSON.parse(localStorage.getItem('students')) || [];
+        state.prizes = JSON.parse(localStorage.getItem('prizes')) || [];
     }
     renderAll();
     renderPrizes();
-}
+})();
 
-// 优化后的保存函数（按班级存储）
-async function saveData() {
-    // 保留原有本地存储
-    localStorage.setItem('students', JSON.stringify(students));
-    localStorage.setItem('prizes', JSON.stringify(prizes));
-    localStorage.setItem('collapseStates', JSON.stringify(collapseStates));
-
-    // 按班级分组存储到Cloudflare KV
-    const classGroups = students.reduce((acc, student) => {
-        const key = `class_${student.className}`;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(student);
-        return acc;
-    }, {});
+// 数据同步方法
+async function syncData() {
+    // 本地备份
+    localStorage.setItem('students', JSON.stringify(state.students));
+    localStorage.setItem('prizes', JSON.stringify(state.prizes));
+    localStorage.setItem('collapseStates', JSON.stringify(state.collapseStates));
 
     try {
-        // 存储班级数据
-        await Promise.all(Object.entries(classGroups).map(async ([key, data]) => {
-            await fetch(`${CLOUDFLARE_API_URL}/data`, {
-                method: 'POST',
+        // 按班级同步
+        const classes = [...new Set(state.students.map(s => s.className))];
+        await Promise.all(classes.map(async className => {
+            const classStudents = state.students.filter(s => s.className === className);
+            await fetch(`${CLOUDFLARE_API.BASE_URL}${CLOUDFLARE_API.ENDPOINTS.CLASS}/${encodeURIComponent(className)}`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key, data })
+                body: JSON.stringify(classStudents)
             });
         });
 
-        // 存储奖品数据
-        await fetch(`${CLOUDFLARE_API_URL}/data`, {
-            method: 'POST',
+        // 同步奖品
+        await fetch(`${CLOUDFLARE_API.BASE_URL}${CLOUDFLARE_API.ENDPOINTS.PRIZES}`, {
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: 'prizes', data: prizes })
+            body: JSON.stringify(state.prizes)
         });
     } catch (e) {
-        console.error('云端保存失败:', e);
+        console.error('云端同步失败:', e);
+        alert('云端同步失败，数据已保存到本地！');
     }
 }
 
-// 新增折叠功能实现
-function toggleCollapse(classId) {
-    const content = document.getElementById(`${classId}-content`);
-    const header = content.previousElementSibling;
-    collapseStates[classId] = !collapseStates[classId];
-    header.classList.toggle('active');
-    content.style.maxHeight = collapseStates[classId] ? '0' : `${content.scrollHeight}px`;
+// 渲染方法
+function renderAll() {
+    const gradeContainer = document.getElementById('gradeContainer');
+    const grades = [...new Set(state.students.map(s => s.grade))];
+    
+    gradeContainer.innerHTML = grades.map(grade => `
+        <div class="grade-section">
+            <h2>${grade}年级</h2>
+            ${renderClasses(grade)}
+        </div>
+    `).join('');
 }
 
-// 修改后的渲染函数（含折叠功能）
-function renderAll() {
-    let html = '';
-    const grades = [...new Set(students.map(s => s.grade))];
+function renderClasses(grade) {
+    const classes = [...new Set(state.students
+        .filter(s => s.grade === grade)
+        .map(s => s.className))];
     
-    grades.forEach(grade => {
-        html += `<div class="grade-section"><h3>${grade}</h3>`;
-        
-        const classes = [...new Set(students
-            .filter(s => s.grade === grade)
-            .map(s => s.className))];
-            
-        classes.forEach(cls => {
-            html += `
-            <div class="class-container">
-                <div class="collapsible ${collapseStates[cls] ? '' : 'active'}" 
-                     onclick="toggleCollapse('${cls}')">
-                    ${cls} <span>(${students.filter(s => s.className === cls).length}人)</span>
-                </div>
-                <div class="class-content" id="${cls}-content"
-                     style="max-height: ${collapseStates[cls] ? '0' : 'auto'}">
-                    <table>
-                        ${students.filter(s => s.className === cls).map((s, i) => `
-                        <tr>
-                            <td>${s.name}</td>
-                            <td>${s.score}分</td>
-                            <td>
-                                <button class="score-btn" style="background:#27ae60" 
-                                    onclick="adjustScore(${i}, 1)">+1</button>
-                                <button class="score-btn" style="background:#e74c3c" 
-                                    onclick="adjustScore(${i}, -1)">-1</button>
-                                <button class="score-btn" onclick="deleteStudent(${i})">删除</button>
-                            </td>
-                        </tr>`).join('')}
-                    </table>
-                </div>
-            </div>`;
-        });
-        html += '</div>';
-    });
-    document.getElementById('gradeContainer').innerHTML = html;
+    return classes.map(className => {
+        const isCollapsed = state.collapseStates[className];
+        return `
+        <div class="class-container">
+            <div class="collapsible ${isCollapsed ? '' : 'active'}" 
+                 onclick="toggleCollapse('${className}')">
+                ${className}
+                <span>(${getClassInfo(className)})</span>
+            </div>
+            <div class="class-content" id="${className}-content" 
+                 style="max-height: ${isCollapsed ? '0' : '1000px'}">
+                ${renderClassTable(className)}
+            </div>
+        </div>`;
+    }).join('');
 }
+
+function renderClassTable(className) {
+    return `<table>
+        <thead><tr>
+            <th>姓名</th>
+            <th>积分</th>
+            <th style="width: 200px;">操作</th>
+        </tr></thead>
+        <tbody>
+            ${state.students
+                .filter(s => s.className === className)
+                .map((student, index) => `
+                <tr>
+                    <td>${student.name}</td>
+                    <td class="score-display">${student.score}</td>
+                    <td>
+                        <button class="btn-success" 
+                            onclick="adjustScore(${index}, 1)">+1</button>
+                        <button class="btn-danger" 
+                            onclick="adjustScore(${index}, -1)">-1</button>
+                        <button class="btn-primary" 
+                            onclick="showStudentDetail(${index})">详情</button>
+                    </td>
+                </tr>`)
+                .join('')}
+        </tbody>
+    </table>`;
+}
+
+// 交互功能
+function toggleCollapse(className) {
+    state.collapseStates[className] = !state.collapseStates[className];
+    const content = document.getElementById(`${className}-content`);
+    content.style.maxHeight = state.collapseStates[className] ? '0' : `${content.scrollHeight}px`;
+    syncData();
+}
+
+function adjustScore(index, delta) {
+    state.students[index].score += delta;
+    syncData();
+    renderAll();
+}
+
+// 其他功能保持不变，需添加错误处理
+// [文件处理、奖品管理等功能实现]
 
 // 核心功能
 function adjustScore(index, delta) {
@@ -306,13 +405,8 @@ function processExcel(data) {
 }
 
 
-
-// 初始化加载
-document.addEventListener('DOMContentLoaded', () => {
-    const savedStates = localStorage.getItem('collapseStates');
-    if(savedStates) collapseStates = JSON.parse(savedStates);
-    loadData();
-});
+// 初始化渲染
+document.addEventListener('DOMContentLoaded', renderAll);
 </script>
 </body>
 </html>
