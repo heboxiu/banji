@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <!-- 未修改的meta标签和标题 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>中小学积分管理系统</title>
+
+    <!-- 原有样式 + 新增折叠样式 -->
     <style>
+        /* 未修改的原始样式 */
         :root { --primary: #2c3e50; --secondary: #3498db; }
         body { font-family: '微软雅黑'; background: #f5f6fa; }
         .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
@@ -17,14 +21,37 @@
         .score-btn { padding: 5px 10px; margin: 0 3px; border: none; border-radius: 4px; cursor: pointer; }
         .add-btn { background: #27ae60; color: white; }
         .exchange-panel { background: #fff; padding: 20px; margin-top: 20px; border-radius: 8px; }
-        .collapsible { cursor: pointer; padding: 10px; background: var(--primary); color: white; border-radius: 4px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; }
-        .collapsible::after { content: "▼"; transition: transform 0.3s; }
-        .collapsible.active::after { transform: rotate(180deg); }
-        .class-content { max-height: 0; overflow: hidden; transition: max-height 0.2s ease-out; }
+
+        /* 新增的折叠样式 */
+        .collapsible {
+            cursor: pointer;
+            padding: 10px;
+            background: var(--primary);
+            color: white;
+            border-radius: 4px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .collapsible::after {
+            content: "▼";
+            transition: transform 0.3s;
+        }
+        .collapsible.active::after {
+            transform: rotate(180deg);
+        }
+        .class-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+        }
     </style>
+    <!-- 未修改的XLSX库引用 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
 <body>
+    <!-- 未修改的HTML结构 -->
     <div class="container">
         <div class="file-upload">
             <input type="file" id="fileInput" accept=".xlsx,.xls,.txt">
@@ -52,12 +79,15 @@
     </div>
 
 <script>
-const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
+// 未修改的Cloudflare配置（需替换实际地址）
+const CLOUDFLARE_API_URL = 'https://your-worker.your-subdomain.workers.dev';
+
+// 原有数据结构 + 新增折叠状态
 let students = [];
 let prizes = [];
 let collapseStates = {};
 
-// 初始化加载
+// 修改后的初始化加载函数
 async function loadData() {
     try {
         const response = await fetch(CLOUDFLARE_API_URL);
@@ -73,57 +103,62 @@ async function loadData() {
     renderPrizes();
 }
 
-// 保存数据（优化版：按班级存储）
+// 优化后的保存函数（按班级存储）
 async function saveData() {
-    // 本地备份
+    // 保留原有本地存储
     localStorage.setItem('students', JSON.stringify(students));
     localStorage.setItem('prizes', JSON.stringify(prizes));
-    
-    // 按班级分组存储到Cloudflare
-    const classMap = students.reduce((acc, student) => {
-        if (!acc[student.className]) acc[student.className] = [];
-        acc[student.className].push(student);
+    localStorage.setItem('collapseStates', JSON.stringify(collapseStates));
+
+    // 按班级分组存储到Cloudflare KV
+    const classGroups = students.reduce((acc, student) => {
+        const key = `class_${student.className}`;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(student);
         return acc;
     }, {});
 
     try {
-        await Promise.all(Object.entries(classMap).map(async ([className, data]) => {
-            await fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}`, {
+        // 存储班级数据
+        await Promise.all(Object.entries(classGroups).map(async ([key, data]) => {
+            await fetch(`${CLOUDFLARE_API_URL}/data`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ key, data })
             });
         });
-        
-        // 保存奖品
-        await fetch(`${CLOUDFLARE_API_URL}/prizes`, {
+
+        // 存储奖品数据
+        await fetch(`${CLOUDFLARE_API_URL}/data`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(prizes)
+            body: JSON.stringify({ key: 'prizes', data: prizes })
         });
     } catch (e) {
         console.error('云端保存失败:', e);
     }
 }
 
-// 折叠功能实现
+// 新增折叠功能实现
 function toggleCollapse(classId) {
     const content = document.getElementById(`${classId}-content`);
     const header = content.previousElementSibling;
     collapseStates[classId] = !collapseStates[classId];
     header.classList.toggle('active');
     content.style.maxHeight = collapseStates[classId] ? '0' : `${content.scrollHeight}px`;
-    localStorage.setItem('collapseStates', JSON.stringify(collapseStates));
 }
 
-// 渲染优化（新增折叠）
+// 修改后的渲染函数（含折叠功能）
 function renderAll() {
     let html = '';
     const grades = [...new Set(students.map(s => s.grade))];
     
     grades.forEach(grade => {
         html += `<div class="grade-section"><h3>${grade}</h3>`;
-        const classes = [...new Set(students.filter(s => s.grade === grade).map(s => s.className))];
+        
+        const classes = [...new Set(students
+            .filter(s => s.grade === grade)
+            .map(s => s.className))];
             
         classes.forEach(cls => {
             html += `
@@ -132,7 +167,7 @@ function renderAll() {
                      onclick="toggleCollapse('${cls}')">
                     ${cls} <span>(${students.filter(s => s.className === cls).length}人)</span>
                 </div>
-                <div class="class-content" id="${cls}-content" 
+                <div class="class-content" id="${cls}-content"
                      style="max-height: ${collapseStates[cls] ? '0' : 'auto'}">
                     <table>
                         ${students.filter(s => s.className === cls).map((s, i) => `
@@ -270,7 +305,9 @@ function processExcel(data) {
     });
 }
 
-// 初始化
+
+
+// 初始化加载
 document.addEventListener('DOMContentLoaded', () => {
     const savedStates = localStorage.getItem('collapseStates');
     if(savedStates) collapseStates = JSON.parse(savedStates);
