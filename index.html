@@ -37,7 +37,8 @@
             gap: 10px;
         }
         input[type="text"], 
-        input[type="number"] {
+        input[type="number"],
+        input[type="file"] {
             flex: 1;
             padding: 10px;
             border: 1px solid #ddd;
@@ -159,15 +160,15 @@ let state = {
     collapseStates: JSON.parse(localStorage.getItem('collapseStates')) || {}
 };
 
-// 初始化
+// 初始化加载
 (async () => {
     try {
-        const [studentsRes, prizesRes] = await Promise.all([
+        const [classesRes, prizesRes] = await Promise.all([
             fetch(`${CLOUDFLARE_API.BASE_URL}${CLOUDFLARE_API.ENDPOINTS.CLASS}`),
             fetch(`${CLOUDFLARE_API.BASE_URL}${CLOUDFLARE_API.ENDPOINTS.PRIZES}`)
         ]);
         
-        const classData = await studentsRes.json();
+        const classData = await classesRes.json();
         state.students = Object.values(classData).flat();
         state.prizes = await prizesRes.json();
     } catch (e) {
@@ -196,7 +197,7 @@ async function syncData() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(classStudents)
             });
-        });
+        }));
 
         // 同步奖品
         await fetch(`${CLOUDFLARE_API.BASE_URL}${CLOUDFLARE_API.ENDPOINTS.PRIZES}`, {
@@ -210,7 +211,133 @@ async function syncData() {
     }
 }
 
-// 渲染方法
+// 数据导入功能
+async function importData() {
+    const file = document.getElementById('fileInput').files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            if (file.name.endsWith('.txt')) {
+                processTXT(e.target.result);
+            } else {
+                processExcel(e.target.result);
+            }
+            await syncData();
+            renderAll();
+        } catch (error) {
+            alert('文件处理失败: ' + error.message);
+        }
+    };
+
+    if (file.name.endsWith('.txt')) {
+        reader.readAsText(file);
+    } else {
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+function processTXT(data) {
+    data.split('\n').forEach(line => {
+        const [className, name] = line.split('@');
+        if (className && name) {
+            state.students.push({
+                grade: className.match(/(.*?)\d/)[1],
+                className: className.trim(),
+                name: name.trim(),
+                score: 0
+            });
+        }
+    });
+}
+
+function processExcel(data) {
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    XLSX.utils.sheet_to_json(sheet).forEach(row => {
+        state.students.push({
+            grade: row.班级.split(/\d/)[0],
+            className: row.班级,
+            name: row.姓名,
+            score: 0
+        });
+    });
+}
+
+// 学生管理功能
+function addStudent() {
+    const className = document.getElementById('newClass').value;
+    const name = document.getElementById('newName').value;
+    if (className && name) {
+        state.students.push({
+            grade: className.replace(/\d/g, ''),
+            className,
+            name,
+            score: 0
+        });
+        syncData();
+        renderAll();
+    }
+}
+
+function deleteStudent(index) {
+    state.students.splice(index, 1);
+    syncData();
+    renderAll();
+}
+
+function adjustScore(index, delta) {
+    state.students[index].score += delta;
+    syncData();
+    renderAll();
+}
+
+// 奖品管理功能
+function addPrize() {
+    state.prizes.push({
+        name: document.getElementById('prizeName').value,
+        points: parseInt(document.getElementById('prizePoints').value),
+        stock: parseInt(document.getElementById('prizeStock').value)
+    });
+    syncData();
+    renderPrizes();
+}
+
+function renderPrizes() {
+    const prizeList = document.getElementById('prizeList');
+    prizeList.innerHTML = state.prizes.map((prize, index) => `
+        <div class="prize-item">
+            <h4>${prize.name}</h4>
+            <p>所需积分: ${prize.points}</p>
+            <p>库存: ${prize.stock}</p>
+            <button class="btn-primary" onclick="exchangePrize(${index})">兑换</button>
+        </div>
+    `).join('');
+}
+
+async function exchangePrize(index) {
+    const prize = state.prizes[index];
+    if (prize.stock < 1) {
+        alert('该奖品已无库存！');
+        return;
+    }
+    
+    const studentName = prompt('请输入兑换学生姓名：');
+    const student = state.students.find(s => s.name === studentName);
+    
+    if (student && student.score >= prize.points) {
+        student.score -= prize.points;
+        prize.stock--;
+        await syncData();
+        renderAll();
+        renderPrizes();
+    } else {
+        alert('兑换失败：积分不足或学生不存在');
+    }
+}
+
+// 界面渲染功能
 function renderAll() {
     const gradeContainer = document.getElementById('gradeContainer');
     const grades = [...new Set(state.students.map(s => s.grade))];
@@ -235,7 +362,7 @@ function renderClasses(grade) {
             <div class="collapsible ${isCollapsed ? '' : 'active'}" 
                  onclick="toggleCollapse('${className}')">
                 ${className}
-                <span>(${getClassInfo(className)})</span>
+                <span>(${state.students.filter(s => s.className === className).length}人)</span>
             </div>
             <div class="class-content" id="${className}-content" 
                  style="max-height: ${isCollapsed ? '0' : '1000px'}">
@@ -265,7 +392,7 @@ function renderClassTable(className) {
                         <button class="btn-danger" 
                             onclick="adjustScore(${index}, -1)">-1</button>
                         <button class="btn-primary" 
-                            onclick="showStudentDetail(${index})">详情</button>
+                            onclick="deleteStudent(${index})">删除</button>
                     </td>
                 </tr>`)
                 .join('')}
@@ -273,140 +400,13 @@ function renderClassTable(className) {
     </table>`;
 }
 
-// 交互功能
+// 折叠功能
 function toggleCollapse(className) {
     state.collapseStates[className] = !state.collapseStates[className];
     const content = document.getElementById(`${className}-content`);
     content.style.maxHeight = state.collapseStates[className] ? '0' : `${content.scrollHeight}px`;
     syncData();
 }
-
-function adjustScore(index, delta) {
-    state.students[index].score += delta;
-    syncData();
-    renderAll();
-}
-
-// 其他功能保持不变，需添加错误处理
-// [文件处理、奖品管理等功能实现]
-
-// 核心功能
-function adjustScore(index, delta) {
-    students[index].score += delta;
-    saveData();
-    renderAll();
-}
-
-function addStudent() {
-    const className = document.getElementById('newClass').value;
-    const name = document.getElementById('newName').value;
-    if (className && name) {
-        students.push({
-            grade: className.replace(/\d/g, ''),
-            className,
-            name,
-            score: 0
-        });
-        saveData();
-        renderAll();
-    }
-}
-
-function deleteStudent(index) {
-    students.splice(index, 1);
-    saveData();
-    renderAll();
-}
-
-// 奖品管理
-function addPrize() {
-    prizes.push({
-        name: document.getElementById('prizeName').value,
-        points: parseInt(document.getElementById('prizePoints').value),
-        stock: parseInt(document.getElementById('prizeStock').value)
-    });
-    saveData();
-    renderPrizes();
-}
-
-function renderPrizes() {
-    document.getElementById('prizeList').innerHTML = prizes.map((p, i) => `
-        <div style="margin:10px; padding:10px; border:1px solid #ddd">
-            ${p.name} (需${p.points}分) 剩余：${p.stock}件
-            <button onclick="exchangePrize(${i})">兑换</button>
-        </div>
-    `).join('');
-}
-
-function exchangePrize(index) {
-    if (prizes[index].stock > 0) {
-        const studentName = prompt("请输入兑换学生姓名：");
-        const student = students.find(s => s.name === studentName);
-        
-        if (student && confirm(`确认扣除${prizes[index].points}积分兑换${prizes[index].name}？`)) {
-            if (student.score >= prizes[index].points) {
-                student.score -= prizes[index].points;
-                prizes[index].stock--;
-                saveData();
-                renderAll();
-                renderPrizes();
-            } else {
-                alert('积分不足！');
-            }
-        }
-    }
-}
-
-// 文件处理
-function importData() {
-    const file = document.getElementById('fileInput').files[0];
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        if (file.name.endsWith('.txt')) {
-            processTXT(e.target.result);
-        } else {
-            processExcel(e.target.result);
-        }
-        saveData();
-        renderAll();
-    }
-    
-    file.name.endsWith('.txt') 
-        ? reader.readAsText(file) 
-        : reader.readAsArrayBuffer(file);
-}
-
-function processTXT(data) {
-    data.split('\n').forEach(line => {
-        const [className, name] = line.split('@');
-        if (className && name) {
-            students.push({ 
-                grade: className.match(/(.*?)\d/)[1],
-                className: className.trim(),
-                name: name.trim(),
-                score: 0 
-            });
-        }
-    });
-}
-
-function processExcel(data) {
-    const workbook = XLSX.read(data, {type: 'array'});
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    XLSX.utils.sheet_to_json(sheet).forEach(row => {
-        students.push({
-            grade: row.班级.split(/\d/)[0],
-            className: row.班级,
-            name: row.姓名,
-            score: 0
-        });
-    });
-}
-
-
-// 初始化渲染
-document.addEventListener('DOMContentLoaded', renderAll);
 </script>
 </body>
 </html>
