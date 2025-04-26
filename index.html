@@ -46,6 +46,27 @@
             font-size: 0.9em;
             opacity: 0.8;
         }
+
+        /* 新增样式 */
+        .grade-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .delete-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .grade-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
@@ -83,6 +104,7 @@ const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
 // 数据存储结构
 let classData = {}; // { className: { students: [], collapseState: boolean } }
 let prizes = [];
+let gradeCollapseState = {}; // 新增年级折叠状态存储
 
 // 初始化加载
 async function loadData() {
@@ -281,15 +303,32 @@ function renderAll() {
     });
 
     grades.forEach((classes, grade) => {
-        html += `<div class="grade-section"><h3>${grade}</h3>`;
+        const isGradeCollapsed = gradeCollapseState[grade] || false;
+        html += `
+        <div class="grade-section">
+            <div class="grade-header">
+                <h3 class="grade-title">
+                    ${grade}
+                    <button class="delete-btn" onclick="deleteGrade('${grade}')">删除年级</button>
+                </h3>
+                <div class="collapsible ${isGradeCollapsed ? '' : 'active'}" 
+                     onclick="toggleGradeCollapse('${grade}')">
+                    年级管理
+                </div>
+            </div>
+            <div class="grade-content" style="max-height: ${isGradeCollapsed ? '0' : '1000px'}">`;
+
         classes.forEach(className => {
             const { students, collapseState } = classData[className];
             html += `
             <div class="class-container">
-                <div class="collapsible ${collapseState ? '' : 'active'}" 
-                     onclick="toggleCollapse('${className}')">
-                    ${className}
-                    <span class="student-count">(${students.length}人)</span>
+                <div class="class-header">
+                    <div class="collapsible ${collapseState ? '' : 'active'}" 
+                         onclick="toggleCollapse('${className}')">
+                        ${className}
+                        <span class="student-count">(${students.length}人)</span>
+                    </div>
+                    <button class="delete-btn" onclick="deleteClass('${className}')">删除班级</button>
                 </div>
                 <div class="class-content" id="${className}-content" 
                      style="max-height: ${collapseState ? '0' : '1000px'}">
@@ -311,7 +350,7 @@ function renderAll() {
                 </div>
             </div>`;
         });
-        html += '</div>';
+        html += `</div></div>`;
     });
     
     document.getElementById('gradeContainer').innerHTML = html;
@@ -319,12 +358,49 @@ function renderAll() {
 
 // 折叠功能
 async function toggleCollapse(className) {
-    const content = document.getElementById(`${className}-content`);
-    const header = content.previousElementSibling;
     classData[className].collapseState = !classData[className].collapseState;
-    header.classList.toggle('active');
-    content.style.maxHeight = classData[className].collapseState ? '0' : `${content.scrollHeight}px`;
     await saveClassData(className);
+    renderAll();
+}
+
+async function toggleGradeCollapse(grade) {
+    gradeCollapseState[grade] = !gradeCollapseState[grade];
+    renderAll();
+}
+
+// 删除功能
+async function deleteGrade(grade) {
+    if (!confirm(`确定删除整个${grade}年级吗？`)) return;
+    
+    try {
+        const classes = Object.keys(classData).filter(c => c.startsWith(grade));
+        await Promise.all([
+            ...classes.map(c => deleteClass(c, false)),
+            fetch(`${CLOUDFLARE_API_URL}/grade/${encodeURIComponent(grade)}`, {
+                method: 'DELETE'
+            })
+        ]);
+        
+        classes.forEach(c => delete classData[c]);
+        renderAll();
+    } catch (e) {
+        console.error('删除失败:', e);
+    }
+}
+
+async function deleteClass(className, confirmNeeded = true) {
+    if (confirmNeeded && !confirm(`确定删除${className}吗？`)) return;
+    
+    try {
+        await fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}`, {
+            method: 'DELETE'
+        });
+        
+        delete classData[className];
+        renderAll();
+    } catch (e) {
+        console.error('删除失败:', e);
+    }
 }
 
 // 初始化
