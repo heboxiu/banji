@@ -37,20 +37,23 @@
         .collapsible.active::after {
             transform: rotate(180deg);
         }
-        .class-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.2s ease-out;
-        }
+/* 修改后的样式部分 */
+.class-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease-out;
+}
+
         .student-count {
             font-size: 0.9em;
             opacity: 0.8;
         }
         /* 添加滚动条 */
-        .scrollable-content {
-            max-height: 500px;
-            overflow-y: auto;
-        }
+.scrollable-content {
+    max-height: 70vh;  /* 使用视口高度百分比 */
+    overflow-y: auto;
+    display: block;    /* 确保容器为块级元素 */
+}
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
@@ -298,7 +301,7 @@ function renderAll() {
                 </div>
                 <div class="class-content ${collapseState ? '' : 'scrollable-content'}" 
                      id="${className}-content"
-                     style="max-height: ${collapseState ? '0' : '500px'}; overflow-y: auto;">
+                     style="max-height: ${collapseState ? '0' : '70vh'}">
                     <table>
                         ${students.map((s, i) => `
                         <tr>
@@ -323,16 +326,15 @@ function renderAll() {
     document.getElementById('gradeContainer').innerHTML = html;
 }
 
-// 折叠功能
+// 修改后的折叠功能
 async function toggleCollapse(className) {
     const content = document.getElementById(`${className}-content`);
     const header = content.previousElementSibling;
     classData[className].collapseState = !classData[className].collapseState;
     header.classList.toggle('active');
-    content.style.maxHeight = classData[className].collapseState ? '0' : '500px';
+    content.style.maxHeight = classData[className].collapseState ? '0' : '70vh';
     await saveClassData(className);
 }
-
 // 初始化
 document.addEventListener('DOMContentLoaded', loadData);
 </script>
