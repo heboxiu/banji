@@ -108,6 +108,91 @@ const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
 let classData = {}; 
 let prizes = [];
 
+// 增强版文件处理函数
+function processTXT(data) {
+    let successCount = 0;
+    let errorLines = [];
+    
+    data.split('\n').forEach((line, index) => {
+        try {
+            line = line.trim();
+            if (!line) return; // 跳过空行
+            
+            // 支持多种分隔符：@、空格、制表符、逗号
+            const [className, name] = line.split(/[@\s\t,]+/).filter(Boolean);
+            if (!className || !name) {
+                throw new Error(`第${index+1}行格式错误: ${line}`);
+            }
+            
+            if (!classData[className]) {
+                classData[className] = { students: [], collapseState: false };
+            }
+            classData[className].students.push({ name: name.trim(), score: 0 });
+            successCount++;
+            
+        } catch (e) {
+            errorLines.push(index + 1);
+            console.error(`TXT解析错误: ${e.message}`);
+        }
+    });
+    
+    if (errorLines.length > 0) {
+        showMessage(`成功导入${successCount}名学生，以下行解析失败：${errorLines.join(', ')}`, 'warning');
+    }
+}
+
+function processExcel(data) {
+    let successCount = 0;
+    let errorLines = [];
+    
+    try {
+        const workbook = XLSX.read(data, {type: 'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        
+        // 自动检测表头
+        const header = rows[0].map(h => h?.toString().trim());
+        const classNameIndex = header.findIndex(h => 
+            ['班级', '班級', 'class'].includes(h.toLowerCase())
+        );
+        const nameIndex = header.findIndex(h => 
+            ['姓名', '名字', 'name'].includes(h.toLowerCase())
+        );
+        
+        if (classNameIndex === -1) throw new Error('缺少班级列');
+        if (nameIndex === -1) throw new Error('缺少姓名列');
+
+        // 处理数据行
+        rows.slice(1).forEach((row, index) => {
+            try {
+                const className = row[classNameIndex]?.toString().trim();
+                const name = row[nameIndex]?.toString().trim();
+                if (!className || !name) {
+                    throw new Error('数据不完整');
+                }
+                
+                if (!classData[className]) {
+                    classData[className] = { students: [], collapseState: false };
+                }
+                classData[className].students.push({ name, score: 0 });
+                successCount++;
+                
+            } catch (e) {
+                errorLines.push(index + 2); // +2因为表头占一行
+                console.error(`第${index+2}行错误: ${e.message}`);
+            }
+        });
+        
+    } catch (e) {
+        console.error(`Excel解析错误: ${e.message}`);
+        showMessage(`Excel文件错误: ${e.message}`, 'error');
+        throw e;
+    }
+    
+    if (errorLines.length > 0) {
+        showMessage(`成功导入${successCount}名学生，以下行解析失败：${errorLines.join(', ')}`, 'warning');
+    }
+}
 // 增强版数据加载
 async function loadData() {
     showLoading();
@@ -300,11 +385,10 @@ function hideLoading() {
     if (el) el.remove();
 }
 
-// 初始化加载
+// 初始化
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
-    // 每5分钟自动保存
-    setInterval(() => {
+    setInterval(() => { // 自动保存
         Promise.all(Object.keys(classData).map(saveClassData));
     }, 300000);
 });
