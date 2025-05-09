@@ -2,17 +2,82 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <!-- 样式部分保持不变 -->
     <style>
-        /* 原有样式代码保持不变 */
+        :root { --primary: #2c3e50; --secondary: #3498db; }
+        body { font-family: '微软雅黑'; background: #f5f6fa; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .file-upload { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .grade-section { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: var(--primary); color: white; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        .score-btn { padding: 5px 10px; margin: 0 3px; border: none; border-radius: 4px; cursor: pointer; }
+        .add-btn { background: #27ae60; color: white; }
+        .exchange-panel { background: #fff; padding: 20px; margin-top: 20px; border-radius: 8px; }
+
+        /* 折叠样式 */
+        .collapsible {
+            cursor: pointer;
+            padding: 10px;
+            background: var(--primary);
+            color: white;
+            border-radius: 4px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .collapsible::after {
+            content: "▼";
+            transition: transform 0.3s;
+        }
+        .collapsible.active::after {
+            transform: rotate(180deg);
+        }
+        .class-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+        }
+        .student-count {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        /* 添加滚动条 */
+        .scrollable-content {
+            max-height: 500px;
+            overflow-y: auto;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <!-- HTML结构保持不变 -->
-    </div>
+        <div class="file-upload">
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.txt">
+            <button onclick="importData()">导入名单</button>
+        </div>
 
+        <div class="file-upload">
+            <input type="text" id="newClass" placeholder="年级班级（如：一年级1班）">
+            <input type="text" id="newName" placeholder="学生姓名">
+            <button class="add-btn" onclick="addStudent()">添加学生</button>
+        </div>
+
+        <div id="gradeContainer"></div>
+
+        <div class="exchange-panel">
+            <h3>奖品设置</h3>
+            <div>
+                <input type="text" id="prizeName" placeholder="奖品名称">
+                <input type="number" id="prizePoints" placeholder="所需积分">
+                <input type="number" id="prizeStock" placeholder="库存数量">
+                <button class="add-btn" onclick="addPrize()">添加奖品</button>
+            </div>
+            <div id="prizeList"></div>
+        </div>
+    </div>
 <script>
 // Cloudflare配置
 const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
