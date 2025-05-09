@@ -5,170 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>中小学积分管理系统</title>
     <style>
-        :root {
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --success: #27ae60;
-            --danger: #e74c3c;
-            --warning: #f39c12;
-            --light: #ecf0f1;
-            --dark: #34495e;
-        }
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            font-family: '微软雅黑', 'Microsoft YaHei', sans-serif;
-            background: #f5f6fa;
-            color: #333;
-            line-height: 1.6;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .panel {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-        .panel-header {
-            padding: 15px 20px;
-            background: var(--primary);
-            color: white;
-            font-size: 1.2em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .panel-body {
-            padding: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input[type="text"],
-        input[type="number"],
-        input[type="file"],
-        select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-        .btn {
-            display: inline-block;
-            padding: 10px 15px;
-            background: var(--secondary);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            text-align: center;
-            transition: all 0.3s;
-        }
-        .btn:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-        .btn-success {
-            background: var(--success);
-        }
-        .btn-danger {
-            background: var(--danger);
-        }
-        .btn-warning {
-            background: var(--warning);
-        }
-        .btn-sm {
-            padding: 5px 10px;
-            font-size: 14px;
-        }
-        .table-responsive {
-            overflow-x: auto;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-        }
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background: var(--light);
-            font-weight: bold;
-        }
-        tr:hover {
-            background: rgba(52, 152, 219, 0.1);
-        }
-        .badge {
-            display: inline-block;
-            padding: 3px 7px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: bold;
-            background: var(--light);
-            color: var(--dark);
-        }
-        .badge-success {
-            background: var(--success);
-            color: white;
-        }
-        .alert {
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-        }
-        .alert-danger {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .alert-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255,255,255,0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(0,0,0,0.1);
-            border-radius: 50%;
-            border-top-color: var(--secondary);
-            animation: spin 1s ease-in-out infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        :root { --primary: #2c3e50; --secondary: #3498db; }
+        body { font-family: '微软雅黑', sans-serif; background: #f5f6fa; margin: 0; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .file-upload { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .file-upload input[type="text"], 
+        .file-upload input[type="number"] { padding: 8px; margin-right: 10px; width: 200px; }
+        .grade-section { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; }
+        th { background: var(--primary); color: white; font-weight: 500; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        .score-btn { padding: 6px 12px; margin: 0 4px; border: none; border-radius: 4px; cursor: pointer; transition: opacity 0.2s; }
+        .score-btn:hover { opacity: 0.9; }
+        .add-btn { background: #27ae60; color: white; }
+        .exchange-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+
+        /* 折叠与滚动样式 */
         .collapsible {
             cursor: pointer;
             padding: 12px 15px;
@@ -179,11 +32,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: all 0.3s;
+            transition: background 0.2s;
         }
-        .collapsible:hover {
-            background: var(--dark);
-        }
+        .collapsible:hover { background: #34495e; }
         .collapsible::after {
             content: "▼";
             font-size: 0.8em;
@@ -194,7 +45,7 @@
         }
         .class-content {
             max-height: 0;
-            overflow: hidden;
+            overflow-y: hidden;
             transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .class-content.active {
@@ -206,706 +57,482 @@
             opacity: 0.8;
             margin-left: 10px;
         }
+
+        /* 加载提示和错误样式 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
         .error-details {
+            background: #f8d7da;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
             max-height: 200px;
             overflow-y: auto;
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 10px;
-            margin-top: 10px;
         }
         .error-line {
+            color: #721c24;
             font-family: monospace;
             font-size: 0.9em;
-            color: var(--danger);
             margin: 5px 0;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <!-- 文件导入面板 -->
-        <div class="panel">
-            <div class="panel-header">
-                <span>数据导入</span>
-            </div>
-            <div class="panel-body">
-                <div class="form-group">
-                    <label for="fileInput">选择文件</label>
-                    <input type="file" id="fileInput" accept=".xlsx,.xls,.txt" class="form-control">
-                    <small class="text-muted">支持Excel(.xlsx/.xls)或文本文件(.txt)，格式：班级@姓名</small>
-                </div>
-                <button id="importBtn" class="btn btn-success" onclick="importData()">
-                    <i class="fas fa-upload"></i> 导入数据
-                </button>
-                <div id="importResult" style="margin-top: 15px;"></div>
-            </div>
+        <div class="file-upload">
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.txt">
+            <button onclick="importData()">导入名单</button>
+            <span style="margin-left:15px;color:#666">支持Excel或TXT文件（格式：班级@姓名）</span>
         </div>
 
-        <!-- 手动添加面板 -->
-        <div class="panel">
-            <div class="panel-header">
-                <span>手动添加</span>
-            </div>
-            <div class="panel-body">
-                <div class="row">
-                    <div class="form-group" style="flex: 1; margin-right: 10px;">
-                        <label for="newClass">班级名称</label>
-                        <input type="text" id="newClass" placeholder="例如：一年级1班" class="form-control">
-                    </div>
-                    <div class="form-group" style="flex: 1; margin-right: 10px;">
-                        <label for="newName">学生姓名</label>
-                        <input type="text" id="newName" placeholder="例如：张三" class="form-control">
-                    </div>
-                    <div class="form-group" style="align-self: flex-end;">
-                        <button id="addStudentBtn" class="btn btn-success" onclick="addStudent()">
-                            <i class="fas fa-plus"></i> 添加学生
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <div class="file-upload">
+            <input type="text" id="newClass" placeholder="年级班级（如：一年级1班）">
+            <input type="text" id="newName" placeholder="学生姓名">
+            <button class="add-btn" onclick="addStudent()">添加学生</button>
         </div>
 
-        <!-- 班级列表 -->
-        <div class="panel">
-            <div class="panel-header">
-                <span>班级管理</span>
-                <button class="btn btn-sm" onclick="refreshData()">
-                    <i class="fas fa-sync-alt"></i> 刷新数据
-                </button>
-            </div>
-            <div class="panel-body">
-                <div id="gradeContainer"></div>
-            </div>
-        </div>
+        <div id="gradeContainer"></div>
 
-        <!-- 奖品管理 -->
-        <div class="panel">
-            <div class="panel-header">
-                <span>奖品兑换</span>
+        <div class="exchange-panel">
+            <h3 style="margin-top:0">奖品管理</h3>
+            <div style="margin-bottom:15px">
+                <input type="text" id="prizeName" placeholder="奖品名称" style="width:180px">
+                <input type="number" id="prizePoints" placeholder="所需积分" style="width:120px">
+                <input type="number" id="prizeStock" placeholder="库存数量" style="width:120px">
+                <button class="add-btn" onclick="addPrize()">添加奖品</button>
             </div>
-            <div class="panel-body">
-                <div class="row">
-                    <div class="form-group" style="flex: 1; margin-right: 10px;">
-                        <label for="prizeName">奖品名称</label>
-                        <input type="text" id="prizeName" placeholder="例如：笔记本" class="form-control">
-                    </div>
-                    <div class="form-group" style="flex: 0.5; margin-right: 10px;">
-                        <label for="prizePoints">所需积分</label>
-                        <input type="number" id="prizePoints" min="1" value="10" class="form-control">
-                    </div>
-                    <div class="form-group" style="flex: 0.5; margin-right: 10px;">
-                        <label for="prizeStock">库存数量</label>
-                        <input type="number" id="prizeStock" min="1" value="1" class="form-control">
-                    </div>
-                    <div class="form-group" style="align-self: flex-end;">
-                        <button class="btn btn-success" onclick="addPrize()">
-                            <i class="fas fa-plus"></i> 添加奖品
-                        </button>
-                    </div>
-                </div>
-                <div id="prizeList" style="margin-top: 20px;"></div>
-            </div>
+            <div id="prizeList"></div>
         </div>
     </div>
 
-    <!-- 加载指示器 -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="spinner"></div>
-    </div>
+<script>
+const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
+let classData = {}; 
+let prizes = [];
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script>
-    // 配置
-    const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev';
-    let classData = {};
-    let prizes = [];
-
-    // DOM加载完成后初始化
-    document.addEventListener('DOMContentLoaded', async () => {
-        showLoading();
-        try {
-            await loadData();
-        } catch (error) {
-            showAlert('数据加载失败: ' + error.message, 'danger');
-        } finally {
-            hideLoading();
-        }
-    });
-
-    // 显示加载指示器
-    function showLoading() {
-        document.getElementById('loadingOverlay').style.display = 'flex';
-    }
-
-    // 隐藏加载指示器
-    function hideLoading() {
-        document.getElementById('loadingOverlay').style.display = 'none';
-    }
-
-    // 显示提示信息
-    function showAlert(message, type = 'success') {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type}`;
-        alertDiv.innerHTML = `
-            <button type="button" class="close" onclick="this.parentElement.remove()">&times;</button>
-            ${message}
-        `;
-        document.body.appendChild(alertDiv);
-        setTimeout(() => alertDiv.remove(), 5000);
-    }
-
-    // 加载数据
-    async function loadData() {
-        try {
-            // 加载班级列表
-            const classListRes = await fetchWithTimeout(`${CLOUDFLARE_API_URL}/classes?t=${Date.now()}`);
-            if (!classListRes.ok) throw new Error('班级列表加载失败');
-            const classList = await classListRes.json();
-
-            // 并行加载班级数据
-            const classPromises = classList.map(className => 
-                fetchWithTimeout(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}?t=${Date.now()}`)
-            );
-            const responses = await Promise.all(classPromises);
-
-            // 处理班级数据
-            classData = {};
-            for (const res of responses) {
-                if (!res.ok) continue;
-                const data = await res.json();
-                classData[data.className] = {
-                    students: data.students || [],
-                    collapseState: data.collapseState || false
-                };
-            }
-
-            // 加载奖品数据
-            const prizesRes = await fetchWithTimeout(`${CLOUDFLARE_API_URL}/prizes?t=${Date.now()}`);
-            prizes = prizesRes.ok ? await prizesRes.json() : [];
-
-            renderAll();
-            renderPrizes();
-        } catch (error) {
-            console.error('数据加载失败:', error);
-            throw error;
-        }
-    }
-
-    // 带超时的fetch
-    async function fetchWithTimeout(url, options = {}, timeout = 10000) {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeout);
+// 数据加载（增强版）
+async function loadData() {
+    showLoading();
+    try {
+        classData = {};
         
-        try {
-            const response = await fetch(url, {
-                ...options,
-                signal: controller.signal
-            });
-            clearTimeout(id);
-            return response;
-        } catch (error) {
-            clearTimeout(id);
-            throw error;
-        }
-    }
-
-    // 渲染班级数据
-    function renderAll() {
-        const container = document.getElementById('gradeContainer');
-        if (!container) return;
-
-        // 按年级分组
-        const grades = {};
-        Object.keys(classData).forEach(className => {
-            const grade = className.replace(/\d+/g, '');
-            if (!grades[grade]) grades[grade] = [];
-            grades[grade].push(className);
+        // 获取班级列表（防缓存）
+        const classListRes = await fetch(`${CLOUDFLARE_API_URL}/classes?t=${Date.now()}`);
+        if (!classListRes.ok) throw new Error('班级列表加载失败');
+        const classList = await classListRes.json();
+        
+        // 并行加载班级数据
+        const classDataArray = await Promise.all(
+            classList.map(async className => {
+                const res = await fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}?t=${Date.now()}`);
+                return res.ok ? res.json() : null;
+            })
+        );
+        
+        // 处理有效数据
+        classDataArray.forEach(data => {
+            if (!data) return;
+            classData[data.className] = {
+                students: data.students || [],
+                collapseState: data.collapseState ?? false
+            };
         });
-
-        let html = '';
-        for (const [grade, classes] of Object.entries(grades)) {
-            html += `<div class="grade-section"><h3>${grade}</h3>`;
-            
-            classes.forEach(className => {
-                const { students, collapseState } = classData[className];
-                html += `
-                <div class="class-container">
-                    <div class="collapsible ${collapseState ? '' : 'active'}" 
-                         onclick="toggleCollapse('${className}')">
-                        ${className}
-                        <span class="student-count">(${students.length}人)</span>
-                    </div>
-                    <div class="class-content ${collapseState ? '' : 'active'}" 
-                         id="${className}-content">
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>姓名</th>
-                                        <th>积分</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${students.map((student, index) => `
-                                    <tr>
-                                        <td>${student.name}</td>
-                                        <td>${student.score}</td>
-                                        <td>
-                                            <button class="btn btn-sm" 
-                                                onclick="adjustScore('${className}', ${index}, 1)">+1</button>
-                                            <button class="btn btn-sm btn-warning" 
-                                                onclick="adjustScore('${className}', ${index}, -1)">-1</button>
-                                            <button class="btn btn-sm btn-danger" 
-                                                onclick="deleteStudent('${className}', ${index})">删除</button>
-                                        </td>
-                                    </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>`;
-            });
-            
-            html += '</div>';
-        }
-
-        container.innerHTML = html || '<div class="alert alert-warning">暂无班级数据</div>';
-    }
-
-    // 渲染奖品列表
-    function renderPrizes() {
-        const container = document.getElementById('prizeList');
-        if (!container) return;
-
-        container.innerHTML = prizes.length ? prizes.map((prize, index) => `
-            <div class="panel" style="margin-bottom: 10px;">
-                <div class="panel-body">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <h4 style="margin: 0;">${prize.name}</h4>
-                            <div style="margin-top: 5px;">
-                                <span class="badge">需要积分: ${prize.points}</span>
-                                <span class="badge ${prize.stock > 0 ? 'badge-success' : ''}" 
-                                      style="margin-left: 5px;">
-                                    库存: ${prize.stock}
-                                </span>
-                            </div>
-                        </div>
-                        <button class="btn btn-sm btn-success" 
-                                onclick="exchangePrize(${index})"
-                                ${prize.stock <= 0 ? 'disabled' : ''}>
-                            兑换
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `).join('') : '<div class="alert alert-warning">暂无奖品数据</div>';
-    }
-
-    // 添加学生
-    async function addStudent() {
-        const className = document.getElementById('newClass').value.trim();
-        const name = document.getElementById('newName').value.trim();
-
-        if (!className || !name) {
-            showAlert('请填写完整的班级和学生姓名', 'warning');
-            return;
-        }
-
-        showLoading();
-        try {
-            if (!classData[className]) {
-                // 创建新班级
-                const res = await fetchWithTimeout(`${CLOUDFLARE_API_URL}/classes`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ className })
-                });
-                
-                if (!res.ok) throw new Error('创建班级失败');
-                
-                classData[className] = {
-                    students: [],
-                    collapseState: false
-                };
-            }
-
-            // 添加学生
-            classData[className].students.push({ 
-                name, 
-                score: 0,
-                addedAt: new Date().toISOString()
-            });
-
-            await saveClassData(className);
-            renderAll();
-            
-            // 清空输入
-            document.getElementById('newName').value = '';
-            showAlert(`成功添加学生 ${name} 到 ${className}`);
-        } catch (error) {
-            console.error('添加学生失败:', error);
-            showAlert('添加学生失败: ' + error.message, 'danger');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // 调整积分
-    async function adjustScore(className, index, delta) {
-        showLoading();
-        try {
-            const student = classData[className].students[index];
-            const newScore = student.score + delta;
-            
-            if (newScore < 0) {
-                showAlert('积分不能为负数', 'warning');
-                return;
-            }
-
-            student.score = newScore;
-            student.lastUpdated = new Date().toISOString();
-            
-            await saveClassData(className);
-            renderAll();
-            showAlert(`已调整 ${student.name} 的积分: ${delta > 0 ? '+' : ''}${delta}`);
-        } catch (error) {
-            console.error('调整积分失败:', error);
-            showAlert('调整积分失败: ' + error.message, 'danger');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // 删除学生
-    async function deleteStudent(className, index) {
-        if (!confirm('确定要删除这个学生吗？')) return;
         
-        showLoading();
-        try {
-            const student = classData[className].students[index];
-            classData[className].students.splice(index, 1);
-            
-            await saveClassData(className);
-            renderAll();
-            showAlert(`已删除学生 ${student.name}`);
-        } catch (error) {
-            console.error('删除学生失败:', error);
-            showAlert('删除学生失败: ' + error.message, 'danger');
-        } finally {
-            hideLoading();
-        }
+        // 加载奖品数据
+        const prizesRes = await fetch(`${CLOUDFLARE_API_URL}/prizes?t=${Date.now()}`);
+        prizes = prizesRes.ok ? await prizesRes.json() : [];
+        
+    } catch (e) {
+        console.error('加载失败:', e);
+        showMessage('数据加载失败，请刷新重试', 'error');
+    } finally {
+        hideLoading();
+        renderAll();
+        renderPrizes();
+    }
+}
+
+// 数据保存（增强错误处理）
+async function saveClassData(className) {
+    try {
+        const res = await fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                className,
+                students: classData[className].students,
+                collapseState: classData[className].collapseState
+            })
+        });
+        if (!res.ok) throw new Error('保存失败');
+    } catch (e) {
+        console.error('保存失败:', e);
+        showMessage('自动保存失败，请检查网络', 'error');
+    }
+}
+
+// 学生管理功能
+async function addStudent() {
+    const className = document.getElementById('newClass').value.trim();
+    const name = document.getElementById('newName').value.trim();
+    if (!className || !name) {
+        showMessage('请填写完整信息', 'warning');
+        return;
     }
 
-    // 保存班级数据
-    async function saveClassData(className) {
-        try {
-            const res = await fetchWithTimeout(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}`, {
+    try {
+        if (!classData[className]) {
+            await fetch(`${CLOUDFLARE_API_URL}/classes`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    className,
-                    students: classData[className].students,
-                    collapseState: classData[className].collapseState
-                })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ className })
             });
-            
-            if (!res.ok) throw new Error('保存失败');
-        } catch (error) {
-            console.error(`保存班级 ${className} 失败:`, error);
-            throw error;
+            classData[className] = { students: [], collapseState: false };
         }
+        
+        classData[className].students.push({ name, score: 0 });
+        await saveClassData(className);
+        renderAll();
+        showMessage('学生添加成功', 'success');
+    } catch (e) {
+        console.error('添加失败:', e);
+        showMessage('添加学生失败，请重试', 'error');
+    }
+}
+
+async function adjustScore(className, index, delta) {
+    const student = classData[className].students[index];
+    student.score = Math.max(0, student.score + delta);
+    await saveClassData(className);
+    renderAll();
+}
+
+async function deleteStudent(className, index) {
+    classData[className].students.splice(index, 1);
+    await saveClassData(className);
+    renderAll();
+}
+
+// 奖品管理功能
+async function addPrize() {
+    const name = document.getElementById('prizeName').value.trim();
+    const points = parseInt(document.getElementById('prizePoints').value);
+    const stock = parseInt(document.getElementById('prizeStock').value);
+
+    if (!name || isNaN(points) || isNaN(stock)) {
+        showMessage('请填写完整的奖品信息', 'warning');
+        return;
     }
 
-    // 添加奖品
-    async function addPrize() {
-        const name = document.getElementById('prizeName').value.trim();
-        const points = parseInt(document.getElementById('prizePoints').value);
-        const stock = parseInt(document.getElementById('prizeStock').value);
+    try {
+        prizes.push({ name, points, stock });
+        await fetch(`${CLOUDFLARE_API_URL}/prizes`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(prizes)
+        });
+        renderPrizes();
+        showMessage('奖品添加成功', 'success');
+    } catch (e) {
+        console.error('添加失败:', e);
+        showMessage('奖品添加失败，请重试', 'error');
+    }
+}
 
-        if (!name || isNaN(points) {
-            showAlert('请填写完整的奖品信息', 'warning');
-            return;
-        }
+function renderPrizes() {
+    document.getElementById('prizeList').innerHTML = prizes.map((p, i) => `
+        <div style="margin:10px; padding:10px; border:1px solid #ddd">
+            ${p.name} (需${p.points}分) 剩余：${p.stock}件
+            <button onclick="exchangePrize(${i})">兑换</button>
+        </div>
+    `).join('');
+}
 
-        showLoading();
-        try {
-            prizes.push({
-                name,
-                points: Math.max(1, points),
-                stock: Math.max(0, stock),
-                addedAt: new Date().toISOString()
-            });
-
-            const res = await fetchWithTimeout(`${CLOUDFLARE_API_URL}/prizes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(prizes)
-            });
-            
-            if (!res.ok) throw new Error('保存奖品失败');
-            
-            renderPrizes();
-            
-            // 清空输入
-            document.getElementById('prizeName').value = '';
-            document.getElementById('prizePoints').value = '10';
-            document.getElementById('prizeStock').value = '1';
-            
-            showAlert(`成功添加奖品 ${name}`);
-        } catch (error) {
-            console.error('添加奖品失败:', error);
-            showAlert('添加奖品失败: ' + error.message, 'danger');
-        } finally {
-            hideLoading();
-        }
+async function exchangePrize(index) {
+    if (prizes[index].stock <= 0) {
+        showMessage('该奖品已无库存', 'warning');
+        return;
     }
 
-    // 兑换奖品
-    async function exchangePrize(index) {
-        const prize = prizes[index];
-        if (prize.stock <= 0) {
-            showAlert('该奖品已无库存', 'warning');
-            return;
-        }
+    const studentName = prompt("请输入兑换学生姓名：");
+    const className = prompt("请输入所在班级：");
+    if (!studentName || !className) return;
 
-        const studentName = prompt("请输入兑换学生姓名:");
-        if (!studentName) return;
+    const classInfo = classData[className];
+    if (!classInfo) {
+        showMessage('班级不存在', 'error');
+        return;
+    }
 
-        const className = prompt("请输入学生所在班级:");
-        if (!className || !classData[className]) {
-            showAlert('班级不存在', 'warning');
-            return;
-        }
+    const student = classInfo.students.find(s => s.name === studentName);
+    if (!student) {
+        showMessage('找不到该学生', 'error');
+        return;
+    }
 
-        const student = classData[className].students.find(s => s.name === studentName);
-        if (!student) {
-            showAlert('找不到该学生', 'warning');
-            return;
-        }
+    if (student.score < prizes[index].points) {
+        showMessage('积分不足，无法兑换', 'warning');
+        return;
+    }
 
-        if (student.score < prize.points) {
-            showAlert(`积分不足，需要${prize.points}分，当前只有${student.score}分`, 'warning');
-            return;
-        }
-
-        if (!confirm(`确认扣除 ${studentName} ${prize.points} 积分兑换 ${prize.name}？`)) {
-            return;
-        }
-
-        showLoading();
+    if (confirm(`确定扣除${prizes[index].points}积分兑换${prizes[index].name}吗？`)) {
         try {
-            // 扣除积分
-            student.score -= prize.points;
-            student.lastUpdated = new Date().toISOString();
-            
-            // 减少库存
+            student.score -= prizes[index].points;
             prizes[index].stock--;
-            prizes[index].lastUpdated = new Date().toISOString();
             
-            // 保存数据
             await Promise.all([
                 saveClassData(className),
-                fetchWithTimeout(`${CLOUDFLARE_API_URL}/prizes`, {
+                fetch(`${CLOUDFLARE_API_URL}/prizes`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(prizes)
                 })
             ]);
             
             renderAll();
             renderPrizes();
-            showAlert(`成功兑换 ${prize.name} 给 ${studentName}`, 'success');
-        } catch (error) {
-            console.error('兑换奖品失败:', error);
-            showAlert('兑换奖品失败: ' + error.message, 'danger');
-        } finally {
-            hideLoading();
+            showMessage('兑换成功', 'success');
+        } catch (e) {
+            console.error('兑换失败:', e);
+            showMessage('兑换失败，请重试', 'error');
         }
     }
+}
 
-    // 导入数据
-    async function importData() {
-        const fileInput = document.getElementById('fileInput');
-        const file = fileInput.files[0];
-        
-        if (!file) {
-            showAlert('请先选择文件', 'warning');
-            return;
-        }
-
-        // 验证文件类型
-        if (!file.name.match(/\.(xlsx|xls|txt)$/i)) {
-            showAlert('仅支持 .xlsx, .xls 或 .txt 文件', 'danger');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            showLoading();
-            const importResult = document.getElementById('importResult');
-            importResult.innerHTML = '';
-            
-            try {
-                let errorLines = [];
-                let successCount = 0;
-                
-                if (file.name.endsWith('.txt')) {
-                    // 处理文本文件
-                    const lines = e.target.result.split('\n');
-                    for (let i = 0; i < lines.length; i++) {
-                        const line = lines[i].trim();
-                        if (!line) continue;
-                        
-                        try {
-                            // 支持多种分隔符
-                            const [className, name] = line.split(/[@,\t]/).map(s => s.trim());
-                            if (!className || !name) throw new Error('格式错误');
-                            
-                            if (!classData[className]) {
-                                classData[className] = { students: [], collapseState: false };
-                            }
-                            
-                            classData[className].students.push({
-                                name,
-                                score: 0,
-                                importedAt: new Date().toISOString()
-                            });
-                            successCount++;
-                        } catch (error) {
-                            errorLines.push({
-                                line: i + 1,
-                                content: line,
-                                error: error.message
-                            });
-                        }
-                    }
-                } else {
-                    // 处理Excel文件
-                    const workbook = XLSX.read(e.target.result, { type: 'array' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                    
-                    // 自动检测列
-                    const header = rows[0].map(h => String(h).trim().toLowerCase();
-                    const classCol = header.findIndex(h => h.includes('班级'));
-                    const nameCol = header.findIndex(h => h.includes('姓名'));
-                    
-                    if (classCol === -1 || nameCol === -1) {
-                        throw new Error('Excel中必须包含"班级"和"姓名"列');
-                    }
-                    
-                    for (let i = 1; i < rows.length; i++) {
-                        const row = rows[i];
-                        if (!row || row.length < Math.max(classCol, nameCol)) continue;
-                        
-                        try {
-                            const className = String(row[classCol]).trim();
-                            const name = String(row[nameCol]).trim();
-                            if (!className || !name) throw new Error('空值');
-                            
-                            if (!classData[className]) {
-                                classData[className] = { students: [], collapseState: false };
-                            }
-                            
-                            classData[className].students.push({
-                                name,
-                                score: 0,
-                                importedAt: new Date().toISOString()
-                            });
-                            successCount++;
-                        } catch (error) {
-                            errorLines.push({
-                                line: i + 1,
-                                content: row.join(','),
-                                error: error.message
-                            });
-                        }
-                    }
-                }
-                
-                // 保存数据
-                await Promise.all(Object.keys(classData).map(saveClassData));
-                
-                // 显示结果
-                if (errorLines.length > 0) {
-                    let errorHtml = `
-                        <div class="alert alert-warning">
-                            <p>成功导入 ${successCount} 条记录，但有 ${errorLines.length} 处错误：</p>
-                            <div class="error-details">
-                                ${errorLines.slice(0, 20).map(e => `
-                                    <div class="error-line">
-                                        <strong>第 ${e.line} 行:</strong> ${e.error} (${e.content.length > 50 ? e.content.substring(0,50)+'...' : e.content})
-                                    </div>
-                                `).join('')}
-                                ${errorLines.length > 20 ? `<div>...以及另外 ${errorLines.length - 20} 处错误</div>` : ''}
-                            </div>
-                        </div>
-                    `;
-                    importResult.innerHTML = errorHtml;
-                } else {
-                    importResult.innerHTML = `
-                        <div class="alert alert-success">
-                            成功导入 ${successCount} 条记录
-                        </div>
-                    `;
-                }
-                
-                renderAll();
-            } catch (error) {
-                console.error('导入失败:', error);
-                importResult.innerHTML = `
-                    <div class="alert alert-danger">
-                        导入失败: ${error.message}
-                    </div>
-                `;
-            } finally {
-                hideLoading();
-                fileInput.value = ''; // 清空文件选择
-            }
-        };
-        
-        if (file.name.endsWith('.txt')) {
-            reader.readAsText(file, 'UTF-8');
-        } else {
-            reader.readAsArrayBuffer(file);
-        }
+// 文件处理（完整版）
+function importData() {
+    const file = document.getElementById('fileInput').files[0];
+    if (!file) {
+        showMessage('请先选择文件', 'warning');
+        return;
     }
 
-    // 刷新数据
-    async function refreshData() {
+    // 文件类型验证
+    if (!file.name.match(/\.(xlsx|xls|txt)$/i)) {
+        showMessage('仅支持.xlsx, .xls, .txt文件', 'error');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
         showLoading();
+        let errorLines = [];
+        
         try {
-            await loadData();
-            showAlert('数据刷新成功', 'success');
-        } catch (error) {
-            console.error('刷新失败:', error);
-            showAlert('刷新数据失败: ' + error.message, 'danger');
+            if (file.name.endsWith('.txt')) {
+                errorLines = processTXT(e.target.result);
+            } else {
+                errorLines = processExcel(e.target.result);
+            }
+
+            if (errorLines.length > 0) {
+                showParseErrors(errorLines);
+            } else {
+                await Promise.all(Object.keys(classData).map(saveClassData));
+                await loadData();
+                showMessage(`成功导入${Object.values(classData).reduce((a,b) => a + b.students.length, 0)}条记录`, 'success');
+            }
+        } catch (e) {
+            console.error('导入失败:', e);
+            showMessage('文件解析失败，请检查格式', 'error');
         } finally {
             hideLoading();
         }
-    }
+    };
+    
+    file.name.endsWith('.txt') 
+        ? reader.readAsText(file, 'UTF-8')
+        : reader.readAsArrayBuffer(file);
+}
 
-    // 切换折叠状态
-    async function toggleCollapse(className) {
+function processTXT(data) {
+    const errorLines = [];
+    data.split('\n').forEach((line, index) => {
+        line = line.trim();
+        if (!line) return;
+
         try {
-            classData[className].collapseState = !classData[className].collapseState;
-            await saveClassData(className);
-            
-            const content = document.getElementById(`${className}-content`);
-            const header = content.previousElementSibling;
-            header.classList.toggle('active');
-            content.classList.toggle('active');
-        } catch (error) {
-            console.error('切换状态失败:', error);
-            showAlert('操作失败: ' + error.message, 'danger');
+            const [className, name] = line.split(/[@,]/).map(s => s.trim());
+            if (!className || !name) throw new Error('格式错误');
+
+            if (!classData[className]) {
+                classData[className] = { students: [], collapseState: false };
+            }
+            classData[className].students.push({ name, score: 0 });
+        } catch (e) {
+            errorLines.push({
+                lineNumber: index + 1,
+                content: line,
+                error: e.message
+            });
         }
+    });
+    return errorLines;
+}
+
+function processExcel(data) {
+    const errorLines = [];
+    try {
+        const workbook = XLSX.read(data, {type: 'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+
+        // 自动检测列索引
+        const header = rows[0].map(h => String(h).trim().toLowerCase());
+        const classCol = header.findIndex(h => h.includes('班级'));
+        const nameCol = header.findIndex(h => h.includes('姓名'));
+        
+        if (classCol === -1 || nameCol === -1) {
+            throw new Error('找不到必需的"班级"和"姓名"列');
+        }
+
+        rows.slice(1).forEach((row, index) => {
+            try {
+                const className = String(row[classCol]).trim();
+                const name = String(row[nameCol]).trim();
+                if (!className || !name) throw new Error('空值');
+
+                if (!classData[className]) {
+                    classData[className] = { students: [], collapseState: false };
+                }
+                classData[className].students.push({ name, score: 0 });
+            } catch (e) {
+                errorLines.push({
+                    lineNumber: index + 2,
+                    content: JSON.stringify(row),
+                    error: e.message
+                });
+            }
+        });
+    } catch (e) {
+        throw new Error(`Excel解析错误: ${e.message}`);
     }
-    </script>
+    return errorLines;
+}
+
+// 界面渲染
+function renderAll() {
+    let html = '';
+    const grades = new Map();
+    
+    Object.keys(classData).forEach(className => {
+        const grade = className.replace(/\d+/g, '');
+        if (!grades.has(grade)) grades.set(grade, []);
+        grades.get(grade).push(className);
+    });
+
+    grades.forEach((classes, grade) => {
+        html += `<div class="grade-section"><h3>${grade}</h3>`;
+        classes.forEach(className => {
+            const { students, collapseState } = classData[className];
+            html += `
+            <div class="class-container">
+                <div class="collapsible ${collapseState ? '' : 'active'}" 
+                     onclick="toggleCollapse('${className}')">
+                    ${className}
+                    <span class="student-count">(${students.length}人)</span>
+                </div>
+                <div class="class-content ${collapseState ? '' : 'active'}" 
+                     id="${className}-content">
+                    <table>
+                        ${students.map((s, i) => `
+                        <tr>
+                            <td>${s.name}</td>
+                            <td>${s.score}分</td>
+                            <td>
+                                <button class="score-btn" style="background:#27ae60" 
+                                    onclick="adjustScore('${className}', ${i}, 1)">+1</button>
+                                <button class="score-btn" style="background:#e74c3c" 
+                                    onclick="adjustScore('${className}', ${i}, -1)">-1</button>
+                                <button class="score-btn" 
+                                    onclick="deleteStudent('${className}', ${i})">删除</button>
+                            </td>
+                        </tr>`).join('')}
+                    </table>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+    });
+    
+    document.getElementById('gradeContainer').innerHTML = html;
+}
+
+// 折叠功能
+async function toggleCollapse(className) {
+    const content = document.getElementById(`${className}-content`);
+    const header = content.previousElementSibling;
+    classData[className].collapseState = !classData[className].collapseState;
+    header.classList.toggle('active');
+    content.classList.toggle('active');
+    await saveClassData(className);
+}
+
+// UI辅助功能
+function showMessage(content, type='info', timeout=3000) {
+    const colors = { info: '#3498db', success: '#2ecc71', warning: '#f1c40f', error: '#e74c3c' };
+    const el = document.createElement('div');
+    el.style = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        background: ${colors[type]};
+        color: white;
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        z-index: 1000;
+    `;
+    el.innerHTML = typeof content === 'string' ? content : content.outerHTML;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), timeout);
+}
+
+function showParseErrors(errors) {
+    const errorHtml = `
+        <div class="error-details">
+            <div>发现${errors.length}处格式错误：</div>
+            ${errors.map(e => `
+                <div class="error-line">
+                    <b>第${e.lineNumber}行</b>: 
+                    ${e.error} (${e.content.length > 50 ? e.content.substring(0,50)+'...' : e.content})
+                </div>
+            `).join('')}
+        </div>
+    `;
+    showMessage(errorHtml, 'error', 10000);
+}
+
+function showLoading() {
+    const el = document.createElement('div');
+    el.className = 'loading-overlay';
+    el.innerHTML = `<div style="font-size:1.2em">加载中...</div>`;
+    document.body.appendChild(el);
+}
+
+function hideLoading() {
+    const el = document.querySelector('.loading-overlay');
+    if (el) el.remove();
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    loadData();
+    setInterval(() => {
+        Promise.all(Object.keys(classData).map(saveClassData));
+    }, 300000); // 5分钟自动保存
+});
+</script>
 </body>
 </html>
