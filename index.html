@@ -137,16 +137,22 @@ async function saveClassData(className) {
 // 新增班级功能
 async function addNewClass(className) {
     if (!classData[className]) {
+        // 先检查是否已存在于class_list
+        const classListRes = await fetch(`${CLOUDFLARE_API_URL}/classes`);
+        const existingClasses = await classListRes.json();
+        
+        if (!existingClasses.includes(className)) {
+            await fetch(`${CLOUDFLARE_API_URL}/classes`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ className })
+            });
+        }
+        
         classData[className] = { students: [], collapseState: false };
-        await fetch(`${CLOUDFLARE_API_URL}/classes`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ className })
-        });
         await saveClassData(className);
     }
 }
-
 // 核心功能保持不变
 async function addStudent() {
     const className = document.getElementById('newClass').value;
@@ -243,33 +249,44 @@ function importData() {
         : reader.readAsArrayBuffer(file);
 }
 
-function processTXT(data) {
+async function processTXT(data) {
+    const classSet = new Set(); // 记录所有班级
     data.split('\n').forEach(line => {
         const [className, name] = line.split('@');
         if (className && name) {
             if (!classData[className]) {
+                classSet.add(className); // 记录新班级
                 classData[className] = { students: [], collapseState: false };
             }
             classData[className].students.push({ name: name.trim(), score: 0 });
         }
     });
+    
+    // 批量添加新班级到class_list
+    await Promise.all(Array.from(classSet).map(c => addNewClass(c)));
 }
 
-function processExcel(data) {
+async function processExcel(data) {
+    const classSet = new Set(); // 记录所有班级
     const workbook = XLSX.read(data, {type: 'array'});
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     XLSX.utils.sheet_to_json(sheet).forEach(row => {
         const className = row.班级;
-        if (!classData[className]) {
-            classData[className] = { students: [], collapseState: false };
+        if (className) {
+            if (!classData[className]) {
+                classSet.add(className); // 记录新班级
+                classData[className] = { students: [], collapseState: false };
+            }
+            classData[className].students.push({
+                name: row.姓名,
+                score: 0
+            });
         }
-        classData[className].students.push({
-            name: row.姓名,
-            score: 0
-        });
     });
+    
+    // 批量添加新班级到class_list
+    await Promise.all(Array.from(classSet).map(c => addNewClass(c)));
 }
-
 // 渲染优化（包含滚动支持）
 function renderAll() {
     let html = '';
