@@ -5,11 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>分级积分管理系统</title>
     <style>
-        :root { --primary: #2c3e50; --secondary: #3498db; }
-        body { font-family: '微软雅黑'; background: #f5f6fa; }
-        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
-        
-        /* 分级管理样式 */
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --error: #c62828;
+            --success: #27ae60;
+        }
+        body {
+            font-family: '微软雅黑', sans-serif;
+            background: #f5f6fa;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 加载动画 */
+        #loading {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            z-index: 1000;
+        }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-top-color: var(--secondary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 错误提示 */
+        #error-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #ffebee;
+            padding: 15px;
+            text-align: center;
+            display: none;
+            z-index: 999;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .error-alert {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 20px;
+            background: #ffcdd2;
+            border: 1px solid #ff1744;
+            border-radius: 6px;
+            color: var(--error);
+            font-size: 14px;
+        }
+        .error-alert button {
+            margin-left: 15px;
+            padding: 5px 12px;
+            background: #fff;
+            border: 1px solid var(--error);
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--error);
+            transition: all 0.3s;
+        }
+        .error-alert button:hover {
+            background: var(--error);
+            color: white;
+        }
+
+        /* 容器样式 */
+        .container {
+            max-width: 1200px;
+            margin: 80px auto 20px;
+            padding: 20px;
+        }
+
+        /* 分级管理模块 */
         .grade-manager {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -22,38 +102,75 @@
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        .nested-container {
-            margin-left: 30px;
-            border-left: 2px solid #3498db;
-            padding-left: 15px;
+        .grade-manager h3 {
+            margin: 0 0 10px 0;
+            color: var(--primary);
+            font-size: 16px;
         }
 
-        /* 数据展示样式 */
-        .file-upload, .exchange-panel {
-            background: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin: 15px 0;
+        /* 输入控件 */
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
         }
-        .grade-section { margin: 20px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background: var(--primary); color: white; }
-        tr:nth-child(even) { background: #f8f9fa; }
-        
-        /* 交互元素样式 */
-        .score-btn {
-            padding: 5px 10px;
-            margin: 0 3px;
+
+        /* 按钮样式 */
+        button {
+            padding: 8px 15px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        button:hover {
+            opacity: 0.9;
         }
         .add-btn {
-            background: #27ae60;
+            background: var(--success);
+            color: white;
+            margin-top: 10px;
+        }
+
+        /* 数据展示区域 */
+        .grade-section {
+            margin: 20px 0;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .nested-container {
+            margin-left: 30px;
+            border-left: 2px solid var(--secondary);
+            padding-left: 15px;
+        }
+
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: var(--primary);
             color: white;
         }
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        /* 折叠面板 */
         .collapsible {
             cursor: pointer;
             padding: 10px;
@@ -82,10 +199,28 @@
             font-size: 0.9em;
             opacity: 0.8;
         }
+
+        /* 积分按钮 */
+        .score-btn {
+            padding: 5px 10px;
+            margin: 0 3px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
 <body>
+    <!-- 加载状态 -->
+    <div id="loading">
+        <div class="spinner"></div>
+        数据加载中...
+    </div>
+
+    <!-- 错误提示 -->
+    <div id="error-container"></div>
+
     <div class="container">
         <!-- 分级管理模块 -->
         <div class="grade-manager">
@@ -110,18 +245,20 @@
         </div>
 
         <!-- 学生管理模块 -->
-        <div class="file-upload">
-            <input type="text" id="studentName" placeholder="学生姓名">
-            <select id="selectedGrade"></select>
-            <select id="selectedClass"></select>
-            <button class="add-btn" onclick="manualAddStudent()">手动添加学生</button>
+        <div class="grade-section">
+            <div class="file-upload">
+                <input type="text" id="studentName" placeholder="学生姓名">
+                <select id="selectedGrade"></select>
+                <select id="selectedClass"></select>
+                <button class="add-btn" onclick="manualAddStudent()">手动添加学生</button>
+            </div>
         </div>
 
         <!-- 数据显示区域 -->
         <div id="gradeContainer"></div>
 
         <!-- 奖品管理模块 -->
-        <div class="exchange-panel">
+        <div class="grade-section exchange-panel">
             <h3>奖品管理</h3>
             <div>
                 <input type="text" id="prizeName" placeholder="奖品名称">
@@ -129,7 +266,7 @@
                 <input type="number" id="prizeStock" placeholder="库存数量">
                 <button class="add-btn" onclick="addPrize()">添加奖品</button>
             </div>
-            <div id="prizeList"></div>
+            <div id="prizeList" style="margin-top: 15px;"></div>
         </div>
     </div>
 
@@ -138,83 +275,107 @@
 const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
 
 // 数据存储结构
-let gradeData = {}; // 结构：{ 年级: { 班级: { students: [], collapseState: boolean } } }
+let gradeData = {}; // { 年级: { 班级: { students: [], collapseState: boolean } }
 let prizes = [];
 
-// 初始化加载数据
+// 增强的加载函数
 async function loadData() {
+    showLoading(true);
     try {
-        // 加载年级列表
-        const gradeRes = await fetch(`${CLOUDFLARE_API_URL}/grades`);
-        const gradeList = await gradeRes.json();
-        
-        // 加载各年级班级数据
-        await Promise.all(Object.keys(gradeList).map(async gradeName => {
-            const classRes = await fetch(`${CLOUDFLARE_API_URL}/grade/${encodeURIComponent(gradeName)}`);
-            const classList = await classRes.json();
+        // 并行加载基础数据
+        const [gradesRes, prizesRes] = await Promise.all([
+            fetchWithRetry(`${CLOUDFLARE_API_URL}/grades`, 3),
+            fetchWithRetry(`${CLOUDFLARE_API_URL}/prizes`, 3)
+        ]);
+
+        // 处理年级数据
+        const gradeList = await parseJSONResponse(gradesRes);
+        if (!gradeList || typeof gradeList !== 'object') {
+            throw new Error('无效的年级数据格式');
+        }
+
+        // 加载班级数据
+        const classPromises = Object.keys(gradeList).map(async gradeName => {
+            const classRes = await fetchWithRetry(
+                `${CLOUDFLARE_API_URL}/grade/${encodeURIComponent(gradeName)}`,
+                2
+            );
+            const classList = await parseJSONResponse(classRes) || [];
             
             gradeData[gradeName] = {};
             await Promise.all(classList.map(async className => {
-                const res = await fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(gradeName)}/${encodeURIComponent(className)}`);
-                const data = await res.json();
+                const res = await fetchWithRetry(
+                    `${CLOUDFLARE_API_URL}/class/${encodeURIComponent(gradeName)}/${encodeURIComponent(className)}`,
+                    2
+                );
+                const data = await parseJSONResponse(res);
                 gradeData[gradeName][className] = {
-                    students: data.students || [],
-                    collapseState: data.collapseState || false
+                    students: data?.students || [],
+                    collapseState: data?.collapseState ?? false
                 };
             }));
-        }));
+        });
+
+        await Promise.all(classPromises);
         
-        // 加载奖品数据
-        const prizesRes = await fetch(`${CLOUDFLARE_API_URL}/prizes`);
-        prizes = await prizesRes.json();
-        
+        // 处理奖品数据
+        prizes = await parseJSONResponse(prizesRes) || [];
+
+        // 更新界面
         updateSelectors();
         renderAll();
         renderPrizes();
     } catch (e) {
-        console.error('初始化加载失败:', e);
-        alert('数据加载失败，请刷新页面重试');
+        showError(`数据加载失败: ${e.message}`);
+        console.error('加载过程错误详情:', e);
+    } finally {
+        showLoading(false);
     }
 }
 
-// 年级管理功能
-async function addGrade() {
-    const gradeName = document.getElementById('newGrade').value.trim();
-    if (!gradeName) return;
-    
-    try {
-        await fetch(`${CLOUDFLARE_API_URL}/grades`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ gradeName })
-        });
-        gradeData[gradeName] = {};
-        updateSelectors();
-    } catch (e) {
-        console.error('创建年级失败:', e);
-        alert('创建年级失败，请检查名称是否重复');
+// 网络请求工具函数
+async function fetchWithRetry(url, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res;
+        } catch (e) {
+            if (i === retries - 1) throw e;
+            await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        }
     }
 }
 
-// 班级管理功能
-async function addClass() {
-    const gradeName = document.getElementById('gradeSelector').value;
-    const className = document.getElementById('newClass').value.trim();
-    if (!gradeName || !className) return;
-    
+// JSON解析工具
+async function parseJSONResponse(response) {
+    const text = await response.text();
     try {
-        await fetch(`${CLOUDFLARE_API_URL}/grade/${encodeURIComponent(gradeName)}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ className })
-        });
-        gradeData[gradeName][className] = { students: [], collapseState: false };
-        updateSelectors();
-        renderAll();
+        return JSON.parse(text);
     } catch (e) {
-        console.error('创建班级失败:', e);
-        alert('创建班级失败，请检查名称格式');
+        console.error('JSON解析失败:', {
+            status: response.status,
+            headers: [...response.headers],
+            text: text.substring(0, 200)
+        });
+        throw new Error('服务器返回了无效数据');
     }
+}
+
+// UI状态管理
+function showLoading(visible) {
+    document.getElementById('loading').style.display = visible ? 'flex' : 'none';
+}
+
+function showError(message) {
+    const container = document.getElementById('error-container');
+    container.innerHTML = `
+        <div class="error-alert">
+            <span>⚠️ ${message}</span>
+            <button onclick="location.reload()">刷新重试</button>
+        </div>
+    `;
+    container.style.display = 'block';
 }
 
 // 更新选择器
@@ -222,9 +383,13 @@ function updateSelectors() {
     const grades = Object.keys(gradeData);
     
     // 更新所有年级选择器
-    const gradeSelectors = document.querySelectorAll('select[id$="GradeSelector"], #selectedGrade');
+    const gradeSelectors = document.querySelectorAll(
+        'select[id$="GradeSelector"], #selectedGrade'
+    );
     gradeSelectors.forEach(selector => {
-        selector.innerHTML = grades.map(g => `<option value="${g}">${g}</option>`).join('');
+        selector.innerHTML = grades.map(g => 
+            `<option value="${g}">${g}</option>`
+        ).join('');
     });
     
     // 更新班级选择器
