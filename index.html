@@ -13,7 +13,7 @@
             --success: #27ae60;
         }
 
-        /* 加载动画 */
+        /* 加载提示 */
         #global-loader {
             position: fixed;
             top: 20px;
@@ -37,6 +37,26 @@
         }
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+
+        /* 网络状态提示 */
+        #network-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            display: none;
+            align-items: center;
+        }
+        .network-progress {
+            height: 3px;
+            background: var(--secondary);
+            width: 0%;
+            transition: width 0.3s;
+            margin-top: 5px;
         }
 
         /* 错误提示 */
@@ -190,12 +210,17 @@
             cursor: pointer;
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
 <body>
     <div id="global-loader">
         <div class="loader-spinner"></div>
         <span>加载中...</span>
+    </div>
+
+    <div id="network-status">
+        <div class="network-progress"></div>
+        <span class="status-text"></span>
     </div>
 
     <div id="global-error">
@@ -211,7 +236,6 @@
     </div>
 
     <div class="data-container">
-        <!-- 原有HTML结构保持不变 -->
     </div>
  <div class="container">
         <!-- 分级管理模块 -->
@@ -266,20 +290,26 @@
 const API_BASE = 'https://banji.446617.workers.dev/';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
+let activeRequests = 0;
 
-// 状态
-let gradeData = {};
-let prizes = [];
-
-// 增强的fetch方法
+// 增强请求方法
 async function safeFetch(endpoint, options = {}) {
-    let attempts = 0;
+    let retryCount = 0;
     const url = `${API_BASE}${endpoint}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    let lastError = null;
 
-    while (attempts < MAX_RETRIES) {
+    updateNetworkStatus('正在初始化请求...', 10);
+    activeRequests++;
+
+    while (retryCount < MAX_RETRIES) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+            console.warn(`请求超时: ${url}`);
+        }, 30000);
+
         try {
+            updateNetworkStatus(`尝试请求 (${retryCount + 1}/${MAX_RETRIES})`, 30);
             const response = await fetch(url, {
                 ...options,
                 signal: controller.signal,
@@ -289,25 +319,48 @@ async function safeFetch(endpoint, options = {}) {
                 }
             });
 
+            clearTimeout(timeoutId);
+
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(`[${response.status}] ${error.error}`);
             }
 
+            updateNetworkStatus('请求成功', 100);
             return response;
         } catch (error) {
-            attempts++;
-            if (attempts === MAX_RETRIES) {
-                throw new Error(`请求失败: ${error.message}`);
-            }
-            await new Promise(r => setTimeout(r, RETRY_DELAY * attempts));
-        } finally {
             clearTimeout(timeoutId);
+            lastError = error;
+            retryCount++;
+
+            if (error.name === 'AbortError') {
+                updateNetworkStatus(`请求超时，正在重试...`, 50);
+            } else {
+                updateNetworkStatus(`请求失败: ${error.message}`, 100);
+            }
+
+            if (retryCount === MAX_RETRIES) break;
+            await new Promise(r => setTimeout(r, RETRY_DELAY * Math.pow(2, retryCount)));
         }
     }
+
+    activeRequests--;
+    if (activeRequests === 0) updateNetworkStatus('', 0);
+    throw new Error(`请求失败: ${lastError?.message || '未知错误'}`);
 }
 
-// 数据加载
+// 网络状态管理
+function updateNetworkStatus(text, progress) {
+    const elem = document.getElementById('network-status');
+    const progressBar = elem.querySelector('.network-progress');
+    const textElem = elem.querySelector('.status-text');
+    
+    elem.style.display = text ? 'flex' : 'none';
+    textElem.textContent = text;
+    progressBar.style.width = `${progress}%`;
+}
+
+// 数据加载逻辑
 async function loadData() {
     showLoader(true);
     try {
@@ -335,6 +388,7 @@ async function loadData() {
         showGlobalError(error);
     } finally {
         showLoader(false);
+        if (activeRequests === 0) updateNetworkStatus('', 0);
     }
 }
 
