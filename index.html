@@ -5,20 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>中小学积分管理系统</title>
     <style>
+        /* 样式优化 */
         :root { --primary: #2c3e50; --secondary: #3498db; }
         body { font-family: '微软雅黑'; background: #f5f6fa; }
         .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
         .file-upload { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .grade-section { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
+        .grade-section, .class-container { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background: var(--primary); color: white; }
         tr:nth-child(even) { background: #f8f9fa; }
-        .score-btn { padding: 5px 10px; margin: 0 3px; border: none; border-radius: 4px; cursor: pointer; }
+        .score-btn, .add-btn { padding: 5px 10px; margin: 0 3px; border: none; border-radius: 4px; cursor: pointer; }
         .add-btn { background: #27ae60; color: white; }
-        .exchange-panel { background: #fff; padding: 20px; margin-top: 20px; border-radius: 8px; }
-
-        /* 折叠样式优化 */
         .collapsible {
             cursor: pointer;
             padding: 10px;
@@ -37,8 +35,8 @@
         .collapsible.active::after {
             transform: rotate(180deg);
         }
-        .class-content {
-            max-height: 500px; /* 新增滚动支持 */
+        .class-content, .grade-content {
+            max-height: 500px;
             overflow-y: auto;
             overflow-x: hidden;
             transition: max-height 0.2s ease-out;
@@ -47,24 +45,26 @@
             font-size: 0.9em;
             opacity: 0.8;
         }
+        .edit-input { margin-left: 10px; }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
+        <!-- 文件上传和学生添加部分 -->
         <div class="file-upload">
             <input type="file" id="fileInput" accept=".xlsx,.xls,.txt">
             <button onclick="importData()">导入名单</button>
         </div>
-
         <div class="file-upload">
             <input type="text" id="newClass" placeholder="年级班级（如：一年级1班）">
             <input type="text" id="newName" placeholder="学生姓名">
             <button class="add-btn" onclick="addStudent()">添加学生</button>
         </div>
 
+        <!-- 年级和班级显示部分 -->
         <div id="gradeContainer"></div>
 
+        <!-- 奖品设置部分 -->
         <div class="exchange-panel">
             <h3>奖品设置</h3>
             <div>
@@ -77,259 +77,253 @@
         </div>
     </div>
 
-<script>
-// Cloudflare配置
-const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
+    <script>
+        // JavaScript代码部分
+        const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
+        let classData = {};
+        let prizes = [];
 
-// 数据存储结构
-let classData = {}; // { className: { students: [], collapseState: boolean } }
-let prizes = [];
-
-// 修复后的初始化加载函数
-async function loadData() {
-    try {
-        // 获取所有班级列表
-        const classListRes = await fetch(`${CLOUDFLARE_API_URL}/classes`);
-        const classList = await classListRes.json();
-        
-        // 并行获取所有班级数据
-        const classPromises = classList.map(className => 
-            fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}`)
-        );
-        
-        const responses = await Promise.all(classPromises);
-        for (const res of responses) {
-            const data = await res.json();
-            classData[data.className] = {
-                students: data.students || [],
-                collapseState: data.collapseState || false
-            };
+        async function loadData() {
+            try {
+                const classListRes = await fetch(`${CLOUDFLARE_API_URL}/classes`);
+                const classList = await classListRes.json();
+                
+                const classPromises = classList.map(className => 
+                    fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}`)
+                );
+                
+                const responses = await Promise.all(classPromises);
+                for (const res of responses) {
+                    const data = await res.json();
+                    classData[data.className] = {
+                        students: data.students || [],
+                        collapseState: data.collapseState || false
+                    };
+                }
+                
+                const prizesRes = await fetch(`${CLOUDFLARE_API_URL}/prizes`);
+                prizes = await prizesRes.json();
+                
+            } catch (e) {
+                console.error('加载失败:', e);
+            }
+            renderAll();
+            renderPrizes();
         }
-        
-        // 获取奖品数据
-        const prizesRes = await fetch(`${CLOUDFLARE_API_URL}/prizes`);
-        prizes = await prizesRes.json();
-        
-    } catch (e) {
-        console.error('加载失败:', e);
-    }
-    renderAll();
-    renderPrizes();
-}
 
-// 保存班级数据（优化后）
-async function saveClassData(className) {
-    try {
-        await fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                className,
-                students: classData[className].students,
-                collapseState: classData[className].collapseState
-            })
-        });
-    } catch (e) {
-        console.error('保存班级数据失败:', e);
-    }
-}
+        async function saveClassData(className) {
+            try {
+                await fetch(`${CLOUDFLARE_API_URL}/class/${encodeURIComponent(className)}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        className,
+                        students: classData[className].students,
+                        collapseState: classData[className].collapseState
+                    })
+                });
+            } catch (e) {
+                console.error('保存班级数据失败:', e);
+            }
+        }
 
-// 新增班级功能
-async function addNewClass(className) {
-    if (!classData[className]) {
-        classData[className] = { students: [], collapseState: false };
-        await fetch(`${CLOUDFLARE_API_URL}/classes`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ className })
-        });
-        await saveClassData(className);
-    }
-}
+        async function addNewClass(className) {
+            if (!classData[className]) {
+                classData[className] = { students: [], collapseState: false };
+                await fetch(`${CLOUDFLARE_API_URL}/classes`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ className })
+                });
+                await saveClassData(className);
+            }
+        }
 
-// 核心功能保持不变
-async function addStudent() {
-    const className = document.getElementById('newClass').value;
-    const name = document.getElementById('newName').value;
-    if (className && name) {
-        if (!classData[className]) await addNewClass(className);
-        classData[className].students.push({ name, score: 0 });
-        await saveClassData(className);
-        renderAll();
-    }
-}
+        async function addStudent() {
+            const className = document.getElementById('newClass').value;
+            const name = document.getElementById('newName').value;
+            if (className && name) {
+                if (!classData[className]) await addNewClass(className);
+                classData[className].students.push({ name, score: 0 });
+                await saveClassData(className);
+                renderAll();
+            }
+        }
 
-async function adjustScore(className, index, delta) {
-    classData[className].students[index].score += delta;
-    await saveClassData(className);
-    renderAll();
-}
+        async function adjustScore(className, index, delta) {
+            classData[className].students[index].score += delta;
+            await saveClassData(className);
+            renderAll();
+        }
 
-async function deleteStudent(className, index) {
-    classData[className].students.splice(index, 1);
-    await saveClassData(className);
-    renderAll();
-}
+        async function deleteStudent(className, index) {
+            classData[className].students.splice(index, 1);
+            await saveClassData(className);
+            renderAll();
+        }
 
-// 奖品管理（完整保留）
-async function addPrize() {
-    prizes.push({
-        name: document.getElementById('prizeName').value,
-        points: parseInt(document.getElementById('prizePoints').value),
-        stock: parseInt(document.getElementById('prizeStock').value)
-    });
-    await fetch(`${CLOUDFLARE_API_URL}/prizes`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(prizes)
-    });
-    renderPrizes();
-}
+        async function editStudentName(className, index, newName) {
+            classData[className].students[index].name = newName;
+            await saveClassData(className);
+            renderAll();
+        }
 
-function renderPrizes() {
-    document.getElementById('prizeList').innerHTML = prizes.map((p, i) => `
-        <div style="margin:10px; padding:10px; border:1px solid #ddd">
-            ${p.name} (需${p.points}分) 剩余：${p.stock}件
-            <button onclick="exchangePrize(${i})">兑换</button>
-        </div>
-    `).join('');
-}
+        async function addPrize() {
+            prizes.push({
+                name: document.getElementById('prizeName').value,
+                points: parseInt(document.getElementById('prizePoints').value),
+                stock: parseInt(document.getElementById('prizeStock').value)
+            });
+            await fetch(`${CLOUDFLARE_API_URL}/prizes`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(prizes)
+            });
+            renderPrizes();
+        }
 
-async function exchangePrize(index) {
-    if (prizes[index].stock > 0) {
-        const studentName = prompt("请输入兑换学生姓名：");
-        const className = prompt("请输入所在班级：");
-        if (classData[className]) {
-            const student = classData[className].students.find(s => s.name === studentName);
-            if (student && confirm(`确认扣除${prizes[index].points}积分兑换${prizes[index].name}？`)) {
-                if (student.score >= prizes[index].points) {
-                    student.score -= prizes[index].points;
-                    prizes[index].stock--;
-                    await Promise.all([
-                        saveClassData(className),
-                        fetch(`${CLOUDFLARE_API_URL}/prizes`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify(prizes)
-                        })
-                    ]);
-                    renderAll();
-                    renderPrizes();
-                } else {
-                    alert('积分不足！');
+        function renderPrizes() {
+            document.getElementById('prizeList').innerHTML = prizes.map((p, i) => `
+                <div style="margin:10px; padding:10px; border:1px solid #ddd">
+                    ${p.name} (需${p.points}分) 剩余：${p.stock}件
+                    <button onclick="exchangePrize(${i})">兑换</button>
+                </div>
+            `).join('');
+        }
+
+        async function exchangePrize(index) {
+            if (prizes[index].stock > 0) {
+                const studentName = prompt("请输入兑换学生姓名：");
+                const className = prompt("请输入所在班级：");
+                if (classData[className]) {
+                    const student = classData[className].students.find(s => s.name === studentName);
+                    if (student && confirm(`确认扣除${prizes[index].points}积分兑换${prizes[index].name}？`)) {
+                        if (student.score >= prizes[index].points) {
+                            student.score -= prizes[index].points;
+                            prizes[index].stock--;
+                            await Promise.all([
+                                saveClassData(className),
+                                fetch(`${CLOUDFLARE_API_URL}/prizes`, {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify(prizes)
+                                })
+                            ]);
+                            renderAll();
+                            renderPrizes();
+                        } else {
+                            alert('积分不足！');
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
-// 文件处理（完整保留）
-function importData() {
-    const file = document.getElementById('fileInput').files[0];
-    const reader = new FileReader();
-    
-    reader.onload = async function(e) {
-        if (file.name.endsWith('.txt')) {
-            processTXT(e.target.result);
-        } else {
-            processExcel(e.target.result);
-        }
-        await Promise.all(Object.keys(classData).map(saveClassData));
-        renderAll();
-    }
-    
-    file.name.endsWith('.txt') 
-        ? reader.readAsText(file) 
-        : reader.readAsArrayBuffer(file);
-}
-
-function processTXT(data) {
-    data.split('\n').forEach(line => {
-        const [className, name] = line.split('@');
-        if (className && name) {
-            if (!classData[className]) {
-                classData[className] = { students: [], collapseState: false };
+        function importData() {
+            const file = document.getElementById('fileInput').files[0];
+            const reader = new FileReader();
+            
+            reader.onload = async function(e) {
+                if (file.name.endsWith('.txt')) {
+                    processTXT(e.target.result);
+                } else {
+                    processExcel(e.target.result);
+                }
+                await Promise.all(Object.keys(classData).map(saveClassData));
+                renderAll();
             }
-            classData[className].students.push({ name: name.trim(), score: 0 });
+            
+            file.name.endsWith('.txt') 
+                ? reader.readAsText(file) 
+                : reader.readAsArrayBuffer(file);
         }
-    });
-}
 
-function processExcel(data) {
-    const workbook = XLSX.read(data, {type: 'array'});
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    XLSX.utils.sheet_to_json(sheet).forEach(row => {
-        const className = row.班级;
-        if (!classData[className]) {
-            classData[className] = { students: [], collapseState: false };
+        function processTXT(data) {
+            data.split('\n').forEach(line => {
+                const [className, name] = line.split('@');
+                if (className && name) {
+                    if (!classData[className]) {
+                        classData[className] = { students: [], collapseState: false };
+                    }
+                    classData[className].students.push({ name: name.trim(), score: 0 });
+                }
+            });
         }
-        classData[className].students.push({
-            name: row.姓名,
-            score: 0
-        });
-    });
-}
 
-// 渲染优化（包含滚动支持）
-function renderAll() {
-    let html = '';
-    const grades = new Map();
-    
-    Object.keys(classData).forEach(className => {
-        const grade = className.replace(/\d+/g, '');
-        if (!grades.has(grade)) grades.set(grade, []);
-        grades.get(grade).push(className);
-    });
+        function processExcel(data) {
+            const workbook = XLSX.read(data, {type: 'array'});
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            XLSX.utils.sheet_to_json(sheet).forEach(row => {
+                const className = row.班级;
+                if (!classData[className]) {
+                    classData[className] = { students: [], collapseState: false };
+                }
+                classData[className].students.push({
+                    name: row.姓名,
+                    score: 0
+                });
+            });
+        }
 
-    grades.forEach((classes, grade) => {
-        html += `<div class="grade-section"><h3>${grade}</h3>`;
-        classes.forEach(className => {
-            const { students, collapseState } = classData[className];
-            html += `
-            <div class="class-container">
-                <div class="collapsible ${collapseState ? '' : 'active'}" 
-                     onclick="toggleCollapse('${className}')">
-                    ${className}
-                    <span class="student-count">(${students.length}人)</span>
-                </div>
-                <div class="class-content" id="${className}-content" 
-                     style="max-height: ${collapseState ? '0' : '500px'}">
-                    <table>
-                        ${students.map((s, i) => `
-                        <tr>
-                            <td>${s.name}</td>
-                            <td>${s.score}分</td>
-                            <td>
-                                <button class="score-btn" style="background:#27ae60" 
-                                    onclick="adjustScore('${className}', ${i}, 1)">+1</button>
-                                <button class="score-btn" style="background:#e74c3c" 
-                                    onclick="adjustScore('${className}', ${i}, -1)">-1</button>
-                                <button class="score-btn" 
-                                    onclick="deleteStudent('${className}', ${i})">删除</button>
-                            </td>
-                        </tr>`).join('')}
-                    </table>
-                </div>
-            </div>`;
-        });
-        html += '</div>';
-    });
-    
-    document.getElementById('gradeContainer').innerHTML = html;
-}
+        function renderAll() {
+            let html = '';
+            const grades = new Map();
+            
+            Object.keys(classData).forEach(className => {
+                const grade = className.replace(/\d+/g, '');
+                if (!grades.has(grade)) grades.set(grade, []);
+                grades.get(grade).push(className);
+            });
 
-// 折叠功能（完整保留）
-async function toggleCollapse(className) {
-    const content = document.getElementById(`${className}-content`);
-    const header = content.previousElementSibling;
-    classData[className].collapseState = !classData[className].collapseState;
-    header.classList.toggle('active');
-    content.style.maxHeight = classData[className].collapseState ? '0' : `${content.scrollHeight}px`;
-    await saveClassData(className);
-}
+            grades.forEach((classes, grade) => {
+                html += `<div class="grade-section"><div class="collapsible" onclick="toggleGradeCollapse('${grade}')">${grade}</div><div class="grade-content" id="${grade}-content" style="max-height: 0;">`;
+                classes.forEach(className => {
+                    const { students, collapseState } = classData[className];
+                    html += `
+                    <div class="class-container">
+                        <div class="collapsible ${collapseState ? '' : 'active'}" onclick="toggleCollapse('${className}')">
+                            ${className}
+                            <span class="student-count">(${students.length}人)</span>
+                        </div>
+                        <div class="class-content" id="${className}-content" style="max-height: ${collapseState ? '0' : '500px'}">
+                            <table>
+                                ${students.map((s, i) => `
+                                <tr>
+                                    <td>${s.name}</td>
+                                    <td>${s.score}分</td>
+                                    <td>
+                                        <input type="text" class="edit-input" value="${s.name}" onchange="editStudentName('${className}', ${i}, this.value)">
+                                        <button class="score-btn" style="background:#27ae60" onclick="adjustScore('${className}', ${i}, 1)">+1</button>
+                                        <button class="score-btn" style="background:#e74c3c" onclick="adjustScore('${className}', ${i}, -1)">-1</button>
+                                        <button class="score-btn" onclick="deleteStudent('${className}', ${i})">删除</button>
+                                    </td>
+                                </tr>`).join('')}
+                            </table>
+                        </div>
+                    </div>`;
+                });
+                html += `</div></div>`;
+            });
+            
+            document.getElementById('gradeContainer').innerHTML = html;
+        }
 
-// 初始化
-document.addEventListener('DOMContentLoaded', loadData);
-</script>
+        async function toggleCollapse(className) {
+            const content = document.getElementById(`${className}-content`);
+            const header = content.previousElementSibling;
+            classData[className].collapseState = !classData[className].collapseState;
+            header.classList.toggle('active');
+            content.style.maxHeight = classData[className].collapseState ? '0' : `${content.scrollHeight}px`;
+            await saveClassData(className);
+        }
+
+        async function toggleGradeCollapse(grade) {
+            const content = document.getElementById(`${grade}-content`);
+            content.style.maxHeight = content.style.maxHeight ? null : '500px';
+            content.previousElementSibling.classList.toggle('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
 </body>
 </html>
