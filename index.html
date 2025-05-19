@@ -6,25 +6,46 @@
     <title>中小学积分管理系统</title>
     <style>
         /* 样式优化 */
-        :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --danger: #e74c3c; }
-        body { font-family: '微软雅黑'; background: #f5f6fa; color: #333; }
-        .container { max-width: 1200px; margin: 20px auto; padding: 20px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: 8px; }
-        .file-upload, .grade-section, .class-container, .exchange-panel { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        :root { --primary: #2c3e50; --secondary: #3498db; }
+        body { font-family: '微软雅黑'; background: #f5f6fa; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .file-upload { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .grade-section, .class-container { margin: 20px 0; background: white; padding: 15px; border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background: var(--primary); color: white; }
         tr:nth-child(even) { background: #f8f9fa; }
-        .score-btn, .add-btn, .submit-btn { padding: 5px 10px; margin: 0 3px; border: none; border-radius: 4px; cursor: pointer; }
-        .add-btn, .submit-btn { background: var(--success); color: white; }
-        .score-btn { background: var(--secondary); color: white; }
-        .collapsible { cursor: pointer; padding: 10px; background: var(--primary); color: white; border-radius: 4px; margin: 5px 0; display: flex; justify-content: space-between; align-items: center; }
-        .collapsible::after { content: "▼"; transition: transform 0.3s; }
-        .collapsible.active::after { transform: rotate(180deg); }
-        .class-content, .grade-content { max-height: 500px; overflow-y: auto; overflow-x: hidden; transition: max-height 0.2s ease-out; }
-        .student-count { font-size: 0.9em; opacity: 0.8; }
+        .score-btn, .add-btn { padding: 5px 10px; margin: 0 3px; border: none; border-radius: 4px; cursor: pointer; }
+        .add-btn { background: #27ae60; color: white; }
+        .collapsible {
+            cursor: pointer;
+            padding: 10px;
+            background: var(--primary);
+            color: white;
+            border-radius: 4px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .collapsible::after {
+            content: "▼";
+            transition: transform 0.3s;
+        }
+        .collapsible.active::after {
+            transform: rotate(180deg);
+        }
+        .class-content, .grade-content {
+            max-height: 500px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: max-height 0.2s ease-out;
+        }
+        .student-count {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
         .edit-input { margin-left: 10px; }
-        .log-container { margin-top: 20px; }
-        .log-item { background: #f9f9f9; padding: 10px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
@@ -54,9 +75,6 @@
             </div>
             <div id="prizeList"></div>
         </div>
-
-        <!-- 积分日志部分 -->
-        <div class="log-container" id="logContainer"></div>
     </div>
 
     <script>
@@ -64,7 +82,6 @@
         const CLOUDFLARE_API_URL = 'https://banji.446617.workers.dev/';
         let classData = {};
         let prizes = [];
-        let changeLog = [];
 
         async function loadData() {
             try {
@@ -128,25 +145,14 @@
             if (className && name) {
                 if (!classData[className]) await addNewClass(className);
                 classData[className].students.push({ name, score: 0 });
+                await saveClassData(className);
                 renderAll();
             }
         }
 
-        function logScoreChange(className, studentName, delta) {
-            const timestamp = new Date().toLocaleString();
-            changeLog.push(`[${timestamp}] 学生 ${studentName} (${className}) 积分变化: ${delta}`);
-            renderLogs();
-        }
-
-        function renderLogs() {
-            const logContainer = document.getElementById('logContainer');
-            logContainer.innerHTML = changeLog.map(log => `<div class="log-item">${log}</div>`).join('');
-        }
-
         async function adjustScore(className, index, delta) {
-            const student = classData[className].students[index];
-            student.score += delta;
-            logScoreChange(className, student.name, delta);
+            classData[className].students[index].score += delta;
+            await saveClassData(className);
             renderAll();
         }
 
