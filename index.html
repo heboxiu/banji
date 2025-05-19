@@ -40,9 +40,6 @@
             <button class="add-btn" onclick="addStudent()">添加学生</button>
         </div>
 
-        <!-- 总提交按钮 -->
-        <button class="submit-btn" onclick="submitChanges()">提交更改</button>
-
         <!-- 年级和班级显示部分 -->
         <div id="gradeContainer"></div>
 
@@ -151,13 +148,6 @@
             student.score += delta;
             logScoreChange(className, student.name, delta);
             renderAll();
-        }
-
-        async function submitChanges() {
-            for (const className of Object.keys(classData)) {
-                await saveClassData(className);
-            }
-            alert('所有更改已提交！');
         }
 
         async function deleteStudent(className, index) {
